@@ -1,0 +1,39 @@
+    <div id="adm-box" hidden>
+      <div class="nav-sep">Administração</div>
+      <nav>
+        <button class="nav-item" data-id="admin" id="nav-admin" aria-label="Usuários" style="--c:#E3A63D;--c-soft:rgba(227,166,61,.14);">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M17 11l1.8 1.8L22 9.5"/></svg></span>
+          <span class="nav-text"><span class="nav-name">Usuários</span><span class="nav-desc">Aprovar, papéis e acessos</span></span>
+        </button>
+        <button class="nav-item" data-id="dados" id="nav-dados" aria-label="Central de importação" style="--c:#4FB6A8;--c-soft:rgba(79,182,168,.14);">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+          <span class="nav-text"><span class="nav-name">Central de importação</span><span class="nav-desc">Venda diária e cadastro de clientes</span></span>
+        </button>
+      </nav>
+    </div>
+    <div class="side-foot">
+      <div class="who" id="who"></div>
+      <button class="logout" id="recarregar" type="button" title="Atualizar dados"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Atualizar dados</span></button>
+      <button class="logout" id="logout" type="button" title="Sair"><svg viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4"/><path d="M16 8l4 4-4 4M20 12H9"/></svg><span>Sair</span></button>
+    </div>
+  </aside>
+  <div id="mscrim"></div>
+  <main id="stage">
+    <section class="view" id="view-vazio"><h1>Sem painéis liberados</h1><p class="sub">Seu acesso ainda não tem nenhum painel. Peça ao administrador para liberar.</p></section>
+    <section class="view" id="view-admin">
+      <h1>Usuários</h1>
+      <p class="sub">Quem se cadastra aparece aqui como <b>pendente</b>. Defina o papel, os painéis liberados e, para atendentes, o nome que aparece nas planilhas (ex.: <i>Stephanie</i>). O atendente só enxerga as linhas dessa pessoa em Recuperação, Hub e Abastecimento.</p>
+      <div class="card"><div class="hint">
+        <b>Papéis:</b> <b>admin</b> — tudo, inclusive esta tela. <b>gestor</b> — vê os dados de todas as pessoas nos painéis liberados e pode publicar planilhas. <b>atendente</b> — vê só os próprios dados. <b>pendente</b> — sem acesso.
+      </div></div>
+      <div id="admin-diag"></div>
+      <div id="admin-lista"></div>
+    </section>
+    <section class="view" id="view-dados">
+      <h1>Central de importação</h1>
+      <p class="sub">É aqui, e só aqui, que os arquivos entram no sistema. As telas de consulta não têm botão de envio: quem só consulta vê os resultados já prontos.</p>
+      <div id="dados-lista"></div>
+    </section>
+  </main>
+</div>
+<div id="toast" role="status"></div>

@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Livro de Cobranças — Painel de Recuperação</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --accent:#4FB6A8;
+  --bg:#12181A;
+  --bg-alt:#212B2E;
+  --card:#1B2326;
+  --paper:#EDEFEA;
+  --muted:#9AA6A5;
+  --brass:#E3A63D;
+  --brass-dim:#A87A2B;
+  --sage:#4FB6A8;
+  --brick:#D9694F;
+  --border:rgba(237,239,234,0.14);
+  --border-strong:rgba(237,239,234,0.26);
+}
+*{box-sizing:border-box;}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:1000;}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--paper);
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px;}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.01em;margin:0;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.muted{color:var(--muted);}
+.hairline{border-bottom:1px solid var(--border);}
+
+/* header */
+.header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;padding-bottom:24px;margin-bottom:28px;border-bottom:1px solid var(--border-strong);}
+.header .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px;}
+.header h1{font-size:34px;font-weight:800;line-height:1;}
+.header .sub{color:var(--muted);font-size:14px;margin-top:6px;}
+.header-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+select,input[type=number]{
+  background:var(--bg-alt);
+  color:var(--paper);
+  border:1px solid var(--border-strong);
+  border-radius:3px;
+  padding:8px 10px;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px;
+}
+.field-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:4px;}
+.field{display:flex;flex-direction:column;}
+.field input[type=date],.conv-tools input[type=date],.conv-tools input[type=search]{background:var(--card);color:var(--paper);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;color-scheme:dark;}
+.conv-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 16px;}
+.fchip{background:transparent;border:1px solid var(--border-strong);color:var(--muted);padding:6px 14px;border-radius:18px;font-size:12.5px;cursor:pointer;font-family:inherit;}
+.fchip.active{background:var(--accent);color:#0E1516;border-color:var(--accent);font-weight:600;}
+.stack-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--card);border:1px solid var(--border);margin:6px 0 4px;}
+.stack-bar i{display:block;height:100%;}
+.conv-nav{display:flex;gap:6px;align-items:center;}
+.conv-nav button{background:transparent;border:1px solid var(--border-strong);color:var(--paper);border-radius:8px;padding:8px 12px;cursor:pointer;font:inherit;font-size:13px;}
+.tabs.sub{margin:-4px 0 16px;flex-wrap:wrap;}
+.pessoa-btn{background:transparent;border:1px solid var(--border-strong);color:var(--muted);padding:9px 18px;border-radius:20px;font-size:13px;font-family:'Inter',system-ui,sans-serif;cursor:pointer;}
+.pessoa-btn.active{background:var(--accent);color:#0E1516;border-color:var(--accent);font-weight:500;}
+html.sem-carga .load-grid,html.sem-carga .load-foot{display:none!important;}
+@media print{.header-controls,.tabs,.conv-tools,.conv-nav,.conf-bar,.dropzone{display:none!important}}
+
+/* upload */
+.dropzone{
+  border:1.5px dashed var(--border-strong);
+  border-radius:10px;
+  padding:22px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:28px;
+  background:var(--bg-alt);
+  flex-wrap:wrap;
+  transition:border-color .15s;
+}
+.dropzone.drag{border-color:var(--brass);}
+.dropzone .dz-left{display:flex;align-items:center;gap:14px;}
+.dz-icon{width:38px;height:38px;border-radius:50%;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;}
+.btn{
+  background:transparent;
+  color:var(--paper);
+  border:1px solid var(--border-strong);
+  padding:9px 16px;
+  border-radius:4px;
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn-ghost{border:none;background:transparent;cursor:pointer;color:var(--muted);text-decoration:underline;padding:4px;font-size:12px;}
+.toast{font-size:12px;color:var(--sage);margin-top:8px;}
+
+/* kpi */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+.kpi-card .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
+.kpi-card .value{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;}
+.kpi-card .value.good{color:var(--sage);}
+.kpi-card .value.bad{color:var(--brick);}
+.kpi-card .value.brass{color:var(--brass);}
+
+.goal-block{display:flex;gap:24px;align-items:center;margin-bottom:30px;flex-wrap:wrap;}
+.gauge{position:relative;width:196px;height:196px;flex-shrink:0;}
+.gauge svg{width:100%;height:100%;display:block;overflow:visible;}
+.gauge .g-track{fill:none;stroke:rgba(237,239,234,0.10);stroke-width:16;}
+.gauge .g-bar{fill:none;stroke:var(--g-color);stroke-width:16;stroke-linecap:round;
+  filter:drop-shadow(0 0 6px var(--g-glow));
+  animation:gauge-fill .9s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes gauge-fill{from{stroke-dashoffset:var(--g-circ);}}
+@media (prefers-reduced-motion:reduce){.gauge .g-bar{animation:none;}}
+.gauge .g-goal{stroke:var(--brass);stroke-width:4;stroke-linecap:round;}
+.gauge .g-goal-dot{fill:var(--brass);}
+.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+.gauge-value{font-family:'IBM Plex Mono',monospace;font-size:38px;font-weight:600;line-height:1;color:var(--g-color);}
+.gauge-value small{font-size:20px;}
+.gauge-goal{font-size:12px;color:var(--muted);margin-top:6px;}
+.gauge-goal b{color:var(--brass);font-weight:600;}
+.gauge-status{margin-top:10px;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;
+  background:var(--g-bg);color:var(--g-color);}
+
+/* quadro mês a mês */
+.mm-scroll{overflow-x:auto;}
+.mm-table th,.mm-table td{text-align:center;white-space:nowrap;}
+.mm-table th:first-child,.mm-table td:first-child{text-align:left;}
+.mm-table td.mm-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.mm-table td.mm-cell span{display:inline-block;min-width:62px;padding:5px 8px;border-radius:6px;}
+.mm-table td.mm-total,.mm-table th.mm-total{border-left:1px solid var(--border-strong);}
+.mm-table tr.mm-team td{border-top:1px solid var(--border-strong);font-weight:600;}
+.mm-legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:12px;flex-wrap:wrap;}
+.mm-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+
+/* tabs */
+.tabs{display:flex;gap:6px;margin-bottom:22px;}
+.tab-btn{background:transparent;border:1px solid var(--border-strong);color:var(--muted);padding:9px 18px;border-radius:20px;font-size:13px;font-family:'Inter',system-ui,sans-serif;cursor:pointer;}
+.tab-btn.active{background:var(--accent);color:#0E1516;border-color:var(--accent);font-weight:500;}
+
+.section-title{font-size:15px;color:var(--brass);letter-spacing:.5px;text-transform:uppercase;margin:0 0 14px;font-family:'IBM Plex Mono',monospace;}
+
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:22px;}
+
+.person-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.chip{background:transparent;border:1px solid var(--border-strong);color:var(--paper);padding:7px 14px;border-radius:20px;font-size:13px;cursor:pointer;font-family:'Inter',system-ui,sans-serif;}
+.chip.active{background:var(--sage);border-color:var(--sage);color:#0E1516;font-weight:500;}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--border-strong);}
+th.sortable{cursor:pointer;user-select:none;}
+th.sortable:hover{color:var(--brass);}
+td{padding:9px 10px;border-bottom:1px solid var(--border);}
+tr:nth-child(even) td{background:rgba(237,239,234,0.02);}
+.status-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.status-pill.sim{background:rgba(79,182,168,0.18);color:var(--sage);}
+.status-pill.nao{background:rgba(217,105,79,0.18);color:var(--brick);}
+.rate-cell{font-family:'IBM Plex Mono',monospace;}
+
+.load-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:10px;}
+@media (max-width:820px){.load-grid{grid-template-columns:1fr;}}
+.load-card{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;margin-bottom:0;}
+.load-step{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);}
+.load-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;text-transform:uppercase;}
+.load-file{display:flex;align-items:center;gap:8px;font-size:13.5px;word-break:break-all;}
+.load-meta{font-size:12.5px;line-height:1.5;}
+.load-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:6px;}
+.btn-main{background:var(--accent);color:#0E1516;border-color:var(--accent);font-weight:600;}
+.btn-main:hover{background:transparent;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.dot.ok{background:var(--sage);box-shadow:0 0 6px rgba(79,182,168,.6);}
+.link-badge{margin-left:8px;font-size:10px;letter-spacing:.08em;color:var(--sage);border:1px solid rgba(79,182,168,.5);border-radius:10px;padding:1px 7px;}
+.load-warn{font-size:12.5px;color:var(--brass);background:rgba(227,166,61,.10);border:1px solid rgba(227,166,61,.30);border-radius:6px;padding:7px 10px;}
+.dot.warn{background:var(--brass);}
+.howto{font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px;}
+.howto summary{cursor:pointer;color:var(--paper);font-weight:500;}
+.howto ol{margin:8px 0 6px 18px;padding:0;line-height:1.55;}
+.howto b{color:var(--paper);font-weight:600;}
+.day-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.day-chip{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--card);border:1px solid var(--border-strong);border-radius:14px;padding:3px 4px 3px 10px;}
+.day-chip small{color:var(--muted);}
+.day-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0 4px;border-radius:50%;}
+.day-x:hover{color:var(--brick);}
+.load-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:26px;min-height:24px;}
+.load-foot .toast{margin-top:0;}
+.status-pill.pend{background:rgba(227,166,61,0.18);color:var(--brass);}
+.div-flag{display:inline-block;margin-left:6px;color:var(--brick);font-weight:700;cursor:help;}
+.conf-bar{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:0 0 26px;}
+.conf-stats{display:flex;gap:26px;flex-wrap:wrap;font-size:13px;}
+.conf-stats b{font-size:16px;}
+.conf-ctrl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);}
+.conf-ctrl label{display:flex;gap:6px;align-items:center;cursor:pointer;}
+.conf-ctrl input{accent-color:var(--accent);}
+.conv-head{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;}
+.notice{background:rgba(227,166,61,0.10);border:1px solid rgba(227,166,61,0.35);color:var(--brass);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:22px;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-state h2{color:var(--paper);margin-bottom:10px;font-size:20px;}
+
+::placeholder{color:var(--muted);}
+</style>
+</head>
+<body>
+<div id="app" class="wrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+let state = {
+  records: [],
+  goal: 55,
+  view: 'equipe',
+  selectedMonth: null,
+  selectedPerson: null,
+  lastUpdated: null,
+  loading: true,
+  toast: null,
+  clientSort: { col: 'appearances', dir: 'desc' },
+  baixas: new Map(),        // FINA740: chave do título -> {cod, dataISO, valor, saldo, nome, titulo}
+  baixaDias: new Set(),     // dias de baixa (DT Baixa) presentes nos FINA740 carregados
+  usarManual: true,         // respeita o "Pago?" já preenchido na planilha
+  incluirDiaRota: false,    // conta também baixas no próprio dia da rota
+  convDate: null,           // data de rota selecionada na aba "Conversões"
+  dataDe: '', dataAte: '',  // busca por intervalo de datas (substitui o período mensal)
+  convFiltro: 'todos', convBusca: '', convPessoa: ''
+};
+
+let chartCumTeam = null, chartCumInd = null;
+let chartBar = null, chartLine = null, chartLineInd = null, chartDailyInd = null, chartDailyTeam = null, chartClientRank = null;
+
+function normalize(s){
+  return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function isoDate(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function mesKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function mesLabelFromKey(k){ const [y,m] = k.split('-').map(Number); return `${MESES[m-1]}/${y}`; }
+
+function parseDateVal(v){
+  if(v instanceof Date) return v;
+  if(typeof v === 'number') return new Date(Math.round((v-25569)*86400*1000));
+  if(typeof v === 'string'){
+    const parts = v.split(/[\/\-]/);
+    if(parts.length===3){
+      let d,m,y;
+      if(parts[0].length===4){ y=+parts[0]; m=+parts[1]; d=+parts[2]; }
+      else { d=+parts[0]; m=+parts[1]; y=+parts[2]; }
+      return new Date(y,m-1,d);
+    }
+    const dd = new Date(v);
+    return isNaN(dd.getTime()) ? null : dd;
+  }
+  return null;
+}
+function pagoStatus(v){
+  const s = normalize(v);
+  if(!s) return null;
+  return s.startsWith('s');
+}
+
+// código do cliente sem zeros à esquerda: "001773", 1773 e "1773" viram "1773"
+function codNorm(v){
+  const s = String(v ?? '').replace(/\D/g,'');
+  return s ? String(parseInt(s,10)) : '';
+}
+function addDays(iso, n){
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, d+n);
+  return isoDate(dt);
+}
+function weekday(iso){ const [y,m,d] = iso.split('-').map(Number); return new Date(y,m-1,d).getDay(); }
+function fmtBR(iso){ const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
+function fmtMoney(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+
+// Janela de cobrança de uma rota: do dia útil anterior até a véspera da rota.
+// Rota de quinta 23/10 -> baixa de quarta 22/10. Rota de segunda -> baixas de sexta, sábado e domingo.
+function janelaCobranca(rotaISO){
+  let ini = addDays(rotaISO, -1);
+  while(weekday(ini)===0 || weekday(ini)===6) ini = addDays(ini, -1);
+  const fim = state.incluirDiaRota ? rotaISO : addDays(rotaISO, -1);
+  return { ini, fim };
+}
+
+// Planilha de rota: colunas Data, Nome, Código, Responsável, Pago?
+function parseRows(jsonRows){
+  if(!jsonRows.length) return [];
+  const sampleKeys = Object.keys(jsonRows[0]);
+  const findKey = (frag)=> sampleKeys.find(k=>normalize(k).includes(frag));
+  const kData = sampleKeys.find(k=>normalize(k)==='data') || findKey('data');
+  const kNome = findKey('nome');
+  const kCod = findKey('cod');
+  const kResp = findKey('respons');
+  const kPago = findKey('pago');
+  if(!kData || !kNome || !kCod || !kResp) return [];
+  const out = [];
+  for(const row of jsonRows){
+    const d = parseDateVal(row[kData]);
+    if(!d || isNaN(d.getTime())) continue;
+    const nome = String(row[kNome] ?? '').trim();
+    if(!nome) continue;
+    const codigo = String(row[kCod] ?? '').trim();
+    const responsavel = String(row[kResp] ?? '').trim();
+    const pagoManual = kPago ? pagoStatus(row[kPago]) : null;
+    const iso = isoDate(d);
+    const mes = mesKey(d);
+    const key = `${iso}|${normalize(codigo)}|${normalize(responsavel)}`;
+    out.push({key, dataISO: iso, mes, nome, codigo, cod: codNorm(codigo), responsavel,
+      pagoManual, pago: pagoManual, origem: pagoManual===null ? 'pendente' : 'manual',
+      pagoAuto: null, divergente: false, baixasCasadas: [], valorBaixado: 0, dataBaixa: '', raw: row, kPago});
+  }
+  return out;
+}
+
+// FINA740 (Protheus): procura a linha de cabeçalho com "Cliente" e "DT Baixa" (a 1ª linha costuma ser "Listagem do Browse")
+function parseFina740(sheet){ return null;
+  const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+  let h = -1;
+  for(let i=0;i<Math.min(aoa.length,10);i++){
+    const cols = aoa[i].map(normalize);
+    if(cols.includes('dt baixa') && cols.includes('cliente')){ h = i; break; }
+  }
+  if(h<0) return null;
+  const cols = aoa[h].map(normalize);
+  const ix = n => cols.indexOf(n);
+  const iCli=ix('cliente'), iBx=ix('dt baixa'), iVal=ix('vlr.titulo'), iSaldo=ix('saldo'), iNome=ix('nome cliente'),
+        iTit=ix('no. titulo'), iPref=ix('prefixo'), iParc=ix('parcela'), iTipo=ix('tipo'), iFil=ix('filial'), iLoja=ix('loja');
+  const out = [];
+  for(let i=h+1;i<aoa.length;i++){
+    const r = aoa[i];
+    const cod = codNorm(r[iCli]);
+    const d = parseDateVal(r[iBx]);
+    if(!cod || !d || isNaN(d.getTime())) continue;
+    const dataISO = isoDate(d);
+    const titulo = String(r[iTit]??'').trim();
+    const key = [r[iFil], r[iPref], titulo, r[iParc], r[iTipo], cod, r[iLoja], dataISO].map(x=>String(x??'').trim()).join('|');
+    out.push({ key, cod, dataISO, valor: Number(r[iVal])||0, saldo: Number(r[iSaldo])||0,
+      nome: String(r[iNome]??'').trim(), titulo, tipo: String(r[iTipo]??'').trim() });
+  }
+  return out;
+}
+
+// Cruza cada cliente da rota com as baixas do FINA740 e define Pago?
+function recompute(){ state.baixas = new Map(); state.baixaDias = new Set();
+  const porCod = new Map();
+  for(const b of state.baixas.values()){
+    if(!porCod.has(b.cod)) porCod.set(b.cod, []);
+    porCod.get(b.cod).push(b);
+  }
+  const dias = Array.from(state.baixaDias).sort();
+  for(const r of state.records){
+    const { ini, fim } = janelaCobranca(r.dataISO);
+    const casadas = (porCod.get(r.cod) || []).filter(b => b.dataISO >= ini && b.dataISO <= fim);
+    r.baixasCasadas = casadas;
+    r.valorBaixado = casadas.reduce((s,b)=>s+b.valor, 0);
+    r.dataBaixa = casadas.length ? casadas.map(b=>b.dataISO).sort().pop() : '';
+    // a janela só é considerada conferida se algum FINA740 carregado tem baixas dentro dela
+    const coberto = dias.some(d => d>=ini && d<=fim);
+    let auto = null;
+    if(casadas.length) auto = true;
+    else if(coberto) auto = false;
+    r.pagoAuto = auto;
+    r.divergente = r.pagoManual!==null && auto!==null && r.pagoManual!==auto;
+    if(state.usarManual && r.pagoManual!==null){ r.pago = r.pagoManual; r.origem = 'manual'; }
+    else if(auto!==null){ r.pago = auto; r.origem = 'fina740'; }
+    else { r.pago = r.pagoManual; r.origem = r.pagoManual===null ? 'pendente' : 'manual'; }
+  }
+}
+
+function mergeRecords(existing, incoming){
+  const map = new Map(existing.map(r=>[r.key,r]));
+  let added=0, updated=0;
+  for(const r of incoming){
+    if(map.has(r.key)){
+      const old = map.get(r.key);
+      if(old.pagoManual !== r.pagoManual) updated++;
+      map.set(r.key, r);
+    } else { map.set(r.key, r); added++; }
+  }
+  return { merged: Array.from(map.values()), added, updated };
+}
+
+function statsFor(records){
+  const valid = records.filter(r=>r.pago!==null);
+  const total = valid.length;
+  const pagos = valid.filter(r=>r.pago).length;
+  const rate = total ? (pagos/total*100) : 0;
+  return { total, pagos, rate };
+}
+function dailyStats(records){
+  const valid = records.filter(r=>r.pago!==null);
+  const byDay = new Map();
+  for(const r of valid){
+    if(!byDay.has(r.dataISO)) byDay.set(r.dataISO, []);
+    byDay.get(r.dataISO).push(r);
+  }
+  return Array.from(byDay.keys()).sort().map(iso=>{
+    const recs = byDay.get(iso);
+    const total = recs.length;
+    const pagos = recs.filter(r=>r.pago).length;
+    const [, mm, dd] = iso.split('-');
+    return { iso, day: `${dd}/${mm}`, total, pagos, rate: total? (pagos/total*100):0 };
+  });
+}
+function periodRecords(records, mes){
+  if(state.dataDe || state.dataAte) return records.filter(r=>(!state.dataDe||r.dataISO>=state.dataDe)&&(!state.dataAte||r.dataISO<=state.dataAte));
+  return mes==='all' ? records : records.filter(r=>r.mes===mes);
+}
+function periodLabel(mes){
+  if(state.dataDe || state.dataAte) return (state.dataDe?fmtBR(state.dataDe):'início')+' a '+(state.dataAte?fmtBR(state.dataAte):'hoje');
+  return mes==='all' ? 'Todos os períodos' : (mes ? mesLabelFromKey(mes) : '');
+}
+function clientRanking(records, topN=Infinity){
+  const map = new Map();
+  for(const r of records){
+    if(!map.has(r.nome)) map.set(r.nome, []);
+    map.get(r.nome).push(r);
+  }
+  const arr = Array.from(map.entries()).map(([nome, recs])=>{
+    const s = statsFor(recs);
+    return { nome, appearances: recs.length, pending: recs.length - s.total, ...s };
+  }).sort((a,b)=> b.appearances - a.appearances);
+  return topN===Infinity ? arr : arr.slice(0, topN);
+}
+function sortClients(list, col, dir){
+  const factor = dir==='asc' ? 1 : -1;
+  return [...list].sort((a,b)=>{
+    if(col==='nome') return factor * a.nome.localeCompare(b.nome, 'pt-BR');
+    if(col==='rate'){
+      const av = a.total ? a.rate : -1;
+      const bv = b.total ? b.rate : -1;
+      return factor * (av - bv);
+    }
+    return factor * (a[col] - b[col]);
+  });
+}
+function dailyStatsForPerson(person, mes){
+  const records = periodRecords(state.records.filter(r=>r.responsavel===person), mes);
+  return dailyStats(records);
+}
+function monthsAvailable(records){
+  return Array.from(new Set(records.map(r=>r.mes))).sort();
+}
+function distinctPersons(records){
+  return Array.from(new Set(records.map(r=>r.responsavel).filter(Boolean))).sort();
+}
+
+// ---------- Armazenamento local (IndexedDB): a base e as baixas ficam salvas neste navegador ----------
+const DB_NAME = 'painel-recuperacao-glp', DB_STORE = 'kv';
+let dbPromise = null;
+function db(){
+  if(!dbPromise){
+    dbPromise = new Promise((res, rej)=>{
+      try{
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = ()=> req.result.createObjectStore(DB_STORE);
+        req.onsuccess = ()=> res(req.result);
+        req.onerror = ()=> rej(req.error);
+      }catch(e){ rej(e); }
+    });
+  }
+  return dbPromise;
+}
+async function dbGet(key){
+  try{
+    const d = await db();
+    return await new Promise((res, rej)=>{
+      const rq = d.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+      rq.onsuccess = ()=> res(rq.result); rq.onerror = ()=> rej(rq.error);
+    });
+  }catch(e){ return undefined; }
+}
+async function dbSet(key, val){
+  try{
+    const d = await db();
+    await new Promise((res, rej)=>{
+      const tx = d.transaction(DB_STORE,'readwrite');
+      tx.objectStore(DB_STORE).put(val, key);
+      tx.oncomplete = ()=> res(); tx.onerror = ()=> rej(tx.error);
+    });
+    state.salvo = true;
+  }catch(e){ state.salvo = false; }
+}
+async function salvar(){
+  const recs = state.records.map(r=>({key:r.key, dataISO:r.dataISO, mes:r.mes, nome:r.nome, codigo:r.codigo, cod:r.cod,
+    responsavel:r.responsavel, pagoManual:r.pagoManual, raw:r.raw, kPago:r.kPago}));
+  await dbSet('dados', {
+    records: recs,
+    baixas: Array.from(state.baixas.values()),
+    base: state.base,
+    arquivosBaixa: state.arquivosBaixa,
+    goal: state.goal, usarManual: state.usarManual, incluirDiaRota: state.incluirDiaRota,
+    lastUpdated: state.lastUpdated
+  });
+}
+function hidratarRegistro(r){
+  return {...r, pago:r.pagoManual, origem: r.pagoManual===null ? 'pendente' : 'manual',
+    pagoAuto:null, divergente:false, baixasCasadas:[], valorBaixado:0, dataBaixa:''};
+}
+
+async function init(){
+  state.records = [];
+  state.goal = 55;
+  state.lastUpdated = null;
+  state.base = null;            // {nome, carregadoEm, registros}
+  state.arquivosBaixa = [];     // [{nome, carregadoEm, baixas, dias:[]}]
+  state.baseHandle = null;
+  const d = await dbGet('dados');
+  if(d){
+    state.records = (d.records||[]).map(hidratarRegistro);
+    for(const b of (d.baixas||[])){ state.baixas.set(b.key, b); state.baixaDias.add(b.dataISO); }
+    state.base = d.base || null;
+    state.arquivosBaixa = d.arquivosBaixa || [];
+    state.goal = d.goal ?? 55;
+    state.usarManual = d.usarManual ?? true;
+    state.incluirDiaRota = d.incluirDiaRota ?? false;
+    state.lastUpdated = d.lastUpdated || null;
+    recompute();
+    state.convDate = hojeISO();
+  }
+  state.baseHandle = (await dbGet('baseHandle')) || null;
+  const months = monthsAvailable(state.records);
+  state.selectedMonth = mesInicial(months);
+  const persons = distinctPersons(state.records);
+  state.selectedPerson = persons.length ? persons[0] : null;
+  state.loading = false;
+  render();
+  // Se a Cobrança de Rota foi vinculada e o navegador já liberou o acesso, relê sozinha a versão mais nova
+  // (o arquivo sincronizado do SharePoint pelo OneDrive muda no computador e o painel pega a mudança ao abrir).
+  await verificarBase(true);
+  agendarVerificacao();
+}
+
+function lerWorkbook(buf){ return XLSX.read(buf, {type:'array', cellDates:true}); }
+
+// adiciona baixas de uma aba FINA740; devolve {novas, dias}
+function absorverBaixas(lista){
+  let novas = 0; const dias = new Set();
+  for(const b of lista){
+    if(!state.baixas.has(b.key)){ state.baixas.set(b.key, b); novas++; }
+    state.baixaDias.add(b.dataISO); dias.add(b.dataISO);
+  }
+  return { novas, dias: Array.from(dias).sort() };
+}
+
+function depoisDeCarregar(){
+  recompute();
+  state.lastUpdated = new Date().toLocaleString('pt-BR');
+  const months = monthsAvailable(state.records);
+  if(!state.selectedMonth || (state.selectedMonth!=='all' && !months.includes(state.selectedMonth))) state.selectedMonth = mesInicial(months);
+  if(!state.selectedPerson){ state.selectedPerson = distinctPersons(state.records)[0] || null; }
+  state.convDate = hojeISO();
+}
+
+// 1) Cobrança de Rota: arquivo padrão. Cada carga SUBSTITUI a base anterior (assim edições e rotas novas entram certinho).
+async function carregarBase(file){
+  state.toast = 'Lendo a Cobrança de Rota...'; render();
+  try{
+    const wb = lerWorkbook(await file.arrayBuffer());
+    let registros = [], novasBaixas = 0;
+    for(const nome of wb.SheetNames){
+      const sheet = wb.Sheets[nome];
+      const fin = parseFina740(sheet);
+      if(fin){ novasBaixas += absorverBaixas(fin).novas; continue; }   // aba "Pagamentos", se existir
+      const incoming = parseRows(XLSX.utils.sheet_to_json(sheet, {defval:''}));
+      if(incoming.length) registros = mergeRecords(registros, incoming).merged;
+    }
+    if(!registros.length){
+      state.toast = `Não encontrei a aba da rota em ${file.name} (colunas Data, Nome, Código, Responsável).`;
+      render(); return;
+    }
+    state.records = registros;
+    const datas = registros.map(r=>r.dataISO).sort();
+    state.base = { nome: file.name, carregadoEm: new Date().toLocaleString('pt-BR'), registros: registros.length,
+      ultimaRota: datas[datas.length-1], modificado: file.lastModified || null };
+    depoisDeCarregar();
+    await salvar();
+    state.toast = `Base atualizada: ${registros.length} cobranças (rotas até ${fmtBR(state.base.ultimaRota)})${novasBaixas?` + ${novasBaixas} baixa(s) da aba Pagamentos`:''}.`;
+  }catch(e){ state.toast = `Não consegui ler ${file.name}.`; }
+  render();
+}
+
+// 2) FINA740 do dia: cada arquivo SOMA às baixas já guardadas (títulos repetidos são ignorados)
+async function carregarBaixas(fileList){
+  const files = Array.from(fileList||[]);
+  if(!files.length) return;
+  state.toast = 'Lendo FINA740...'; render();
+  let total = 0, falhas = [];
+  for(const file of files){
+    try{
+      const wb = lerWorkbook(await file.arrayBuffer());
+      let achou = false, novas = 0, dias = new Set();
+      for(const nome of wb.SheetNames){
+        const fin = parseFina740(wb.Sheets[nome]);
+        if(!fin) continue;
+        achou = true;
+        const r = absorverBaixas(fin); novas += r.novas; r.dias.forEach(d=>dias.add(d));
+      }
+      if(!achou){ falhas.push(file.name); continue; }
+      total += novas;
+      state.arquivosBaixa.push({ nome:file.name, carregadoEm:new Date().toLocaleString('pt-BR'), baixas:novas, dias:Array.from(dias).sort() });
+    }catch(e){ falhas.push(file.name); }
+  }
+  depoisDeCarregar();
+  await salvar();
+  let msg = `${total} baixa(s) nova(s) adicionada(s).`;
+  if(falhas.length) msg += ` Não reconheci como FINA740: ${falhas.join(', ')} (precisa das colunas Cliente e DT Baixa).`;
+  state.toast = msg;
+  render();
+}
+
+// remove todas as baixas de um dia (ex.: FINA740 subido errado)
+async function removerDiaBaixa(dia){
+  for(const [k,b] of state.baixas) if(b.dataISO===dia) state.baixas.delete(k);
+  state.baixaDias.delete(dia);
+  state.arquivosBaixa = state.arquivosBaixa.map(a=>({...a, dias:a.dias.filter(d=>d!==dia)})).filter(a=>a.dias.length);
+  depoisDeCarregar(); await salvar();
+  state.toast = `Baixas de ${fmtBR(dia)} removidas.`;
+  render();
+}
+
+// Escolher a Cobrança de Rota guardando o "atalho" do arquivo (Chrome/Edge) para reler com um clique
+async function escolherBase(){
+  if(window.showOpenFilePicker){
+    try{
+      const [h] = await window.showOpenFilePicker({ types:[{description:'Planilhas', accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx','.xlsm','.xls']}}] });
+      state.baseHandle = h; state.precisaPermissao = false; state.baseQuebrada = false; await dbSet('baseHandle', h);
+      await carregarBase(await h.getFile());
+      state.baseVerificadaEm = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      state.toast = `Vinculado a "${h.name}". A partir de agora o painel confere esse arquivo sozinho.`;
+      render();
+      agendarVerificacao();
+      return;
+    }catch(e){
+      if(e && e.name==='AbortError') return;   // cancelou a janela
+    }
+  } else {
+    state.toast = 'Este navegador não faz o vínculo automático (use Edge ou Chrome). Vou só carregar o arquivo desta vez.';
+    render();
+  }
+  document.getElementById('base-input').click();
+}
+async function relerBase(){
+  const h = state.baseHandle;
+  if(!h) return escolherBase();
+  try{
+    let p = await h.queryPermission({mode:'read'});
+    if(p!=='granted') p = await h.requestPermission({mode:'read'});
+    if(p!=='granted'){ state.precisaPermissao = true; state.toast = 'O navegador não liberou a leitura. Clique em "Liberar leitura" e escolha "Permitir".'; render(); return; }
+    state.precisaPermissao = false;
+    await carregarBase(await h.getFile());
+    state.baseVerificadaEm = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    render();
+  }catch(e){
+    state.baseQuebrada = true;
+    state.toast = 'Não achei a Cobrança de Rota no mesmo lugar (foi movida ou renomeada?). Clique em "Vincular de novo".';
+    render();
+  }
+}
+
+// Confere o arquivo vinculado sem clique: se o OneDrive trouxe uma versão nova do SharePoint, recarrega sozinho.
+async function verificarBase(silencioso){
+  const h = state.baseHandle;
+  if(!h) return;
+  try{
+    const p = await h.queryPermission({mode:'read'});
+    if(p !== 'granted'){
+      if(!state.precisaPermissao){ state.precisaPermissao = true; render(); }
+      return;
+    }
+    const estavaBloqueado = state.precisaPermissao;
+    state.precisaPermissao = false;
+    const f = await h.getFile();
+    const agora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    if(!state.base || !state.base.modificado || f.lastModified > state.base.modificado){
+      await carregarBase(f);
+      state.toast = `Cobrança de Rota atualizada automaticamente (versão de ${new Date(f.lastModified).toLocaleString('pt-BR')}).`;
+      state.baseVerificadaEm = agora;
+      render();
+    } else {
+      state.baseVerificadaEm = agora;
+      if(estavaBloqueado || !silencioso) render();
+      else { const el = document.getElementById('base-check'); if(el) el.textContent = `conferido às ${agora}`; }
+    }
+    state.baseQuebrada = false;
+  }catch(e){
+    if(!state.baseQuebrada){ state.baseQuebrada = true; render(); }
+  }
+}
+let _timerBase = null;
+function agendarVerificacao(){
+  if(_timerBase) return;
+  _timerBase = setInterval(()=>{ if(document.visibilityState !== 'hidden') verificarBase(true); }, 60*1000);
+  const aoVoltar = ()=> verificarBase(true);
+  window.addEventListener('focus', aoVoltar);
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') aoVoltar(); });
+  try{ window.parent && window.parent !== window && window.parent.addEventListener('focus', aoVoltar); }catch(e){}
+}
+
+async function updateGoal(val){
+  const goal = Math.max(0, Math.min(100, Number(val) || 0));
+  state.goal = goal;
+  try{ if(window.parent && window.parent.glpSalvarMeta) window.parent.glpSalvarMeta(goal); }catch(e){}
+  salvar();
+  render();
+}
+
+// última data de rota que já tem baixa conferida (ou a mais recente, se nenhuma tiver)
+function latestRouteDate(){
+  const ds = Array.from(new Set(state.records.map(r=>r.dataISO))).sort();
+  const comAuto = ds.filter(d => state.records.some(r=>r.dataISO===d && r.pagoAuto!==null));
+  return comAuto.length ? comAuto[comAuto.length-1] : ds[ds.length-1] || null;
+}
+
+// Baixa a planilha da rota com Pago? e Valor Recuperado preenchidos pelo cruzamento
+function exportarRota(){
+  const linhas = [...state.records].sort((a,b)=> a.dataISO.localeCompare(b.dataISO)).map(r=>{
+    const out = {};
+    for(const [k,v] of Object.entries(r.raw)){
+      if(k.startsWith('__EMPTY')) continue;
+      out[k] = v;
+    }
+    const kP = r.kPago || 'Pago?';
+    out[kP] = r.pago===null ? '' : (r.pago ? 'SIM' : 'NÃO');
+    const kVal = Object.keys(out).find(k=>normalize(k).includes('valor recuperado')) || 'Valor Recuperado';
+    if(r.pago && r.valorBaixado && (out[kVal]===''||out[kVal]==null)) out[kVal] = Number(r.valorBaixado.toFixed(2));
+    out['Data da Baixa (FINA740)'] = r.dataBaixa ? fmtBR(r.dataBaixa) : '';
+    out['Valor Baixado (FINA740)'] = r.valorBaixado ? Number(r.valorBaixado.toFixed(2)) : '';
+    out['Origem do Pago?'] = r.origem==='fina740' ? 'Automático (FINA740)' : r.origem==='manual' ? 'Manual' : 'Aguardando baixa';
+    out['Divergência'] = r.divergente ? `Manual ${r.pagoManual?'SIM':'NÃO'} × FINA740 ${r.pagoAuto?'SIM':'NÃO'}` : '';
+    return out;
+  });
+  const ws = XLSX.utils.json_to_sheet(linhas, {cellDates:true, dateNF:'dd/mm/yyyy'});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Consolidado 2026');
+  XLSX.writeFile(wb, `Cobranca_de_Rota_conferida_${isoDate(new Date())}.xlsx`);
+}
+
+async function clearData(){
+  state.baixas = new Map();
+  state.baixaDias = new Set();
+  state.arquivosBaixa = [];
+  state.base = null;
+  state.baseHandle = null;
+  state.convDate = null;
+  state.records = [];
+  state.selectedMonth = null;
+  state.selectedPerson = null;
+  state.lastUpdated = null;
+  await salvar();
+  await dbSet('baseHandle', null);
+  state.toast = 'Base e baixas apagadas deste navegador.';
+  render();
+}
+
+function stampHTML(rate, goal){
+  const hit = rate >= goal;
+  const color = hit ? 'var(--sage)' : 'var(--brick)';
+  const glow  = hit ? 'rgba(79,182,168,0.55)' : 'rgba(217,105,79,0.55)';
+  const bg    = hit ? 'rgba(79,182,168,0.18)' : 'rgba(217,105,79,0.18)';
+  const r = 80, c = 100, circ = 2*Math.PI*r;
+  const pct = Math.max(0, Math.min(100, rate));
+  const offset = circ * (1 - pct/100);
+  // marcador da meta na borda do anel (0% = topo, sentido horário)
+  const ang = (Math.max(0, Math.min(100, goal))/100)*2*Math.PI - Math.PI/2;
+  const x1 = c + (r-13)*Math.cos(ang), y1 = c + (r-13)*Math.sin(ang);
+  const x2 = c + (r+13)*Math.cos(ang), y2 = c + (r+13)*Math.sin(ang);
+  const xd = c + (r+21)*Math.cos(ang), yd = c + (r+21)*Math.sin(ang);
+  return `<div class="gauge" style="--g-color:${color};--g-glow:${glow};--g-bg:${bg};--g-circ:${circ.toFixed(2)}" role="img" aria-label="Taxa de recuperação ${rate.toFixed(1)}% de uma meta de ${goal}%. ${hit?'Meta batida':'Abaixo da meta'}.">
+    <svg viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="g-track" cx="${c}" cy="${c}" r="${r}"/>
+      <circle class="g-bar" cx="${c}" cy="${c}" r="${r}" transform="rotate(-90 ${c} ${c})"
+        stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"/>
+      <line class="g-goal" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>
+      <circle class="g-goal-dot" cx="${xd.toFixed(1)}" cy="${yd.toFixed(1)}" r="3.5"/>
+    </svg>
+    <div class="gauge-center">
+      <div class="gauge-value">${rate.toFixed(1)}<small>%</small></div>
+      <div class="gauge-goal">meta <b>${goal}%</b></div>
+    </div>
+  </div>`;
+}
+
+function monthSelectHTML(){
+  const months = monthsAvailable(state.records);
+  if(!months.length) return '';
+  return `<div class="field">
+    <span class="field-label">Período</span>
+    <select id="month-select">
+      <option value="all" ${state.selectedMonth==='all'?'selected':''}>Geral (todos os períodos)</option>
+      ${months.slice().reverse().map(m=>`<option value="${m}" ${m===state.selectedMonth?'selected':''}>${mesLabelFromKey(m)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function renderHeader(){
+  return `
+  <div class="header">
+    <div>
+      <div class="eyebrow">Livro de cobranças</div>
+      <h1>Painel de recuperação</h1>
+      <div class="sub">${state.lastUpdated ? 'Última atualização: '+state.lastUpdated : 'Nenhuma planilha carregada ainda'}</div>
+    </div>
+    <div class="header-controls">
+      ${monthSelectHTML()}
+      ${state.records.length ? `<div class="field"><span class="field-label">De</span><input type="date" id="data-de" value="${state.dataDe}"></div>
+      <div class="field"><span class="field-label">Até</span><input type="date" id="data-ate" value="${state.dataAte}"></div>
+      ${(state.dataDe||state.dataAte) ? '<div class="field"><span class="field-label">&nbsp;</span><button class="btn" id="data-limpar" type="button">Voltar ao mês</button></div>' : ''}` : ''}
+      <div class="field">
+        <span class="field-label">Meta do mês</span>
+        <input type="number" id="goal-input" min="0" max="100" value="${state.goal}" style="width:70px;" ${window.GLP_PODE===false?'disabled title="Só gestor ou administrador altera a meta"':''}>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDropzone(){
+  const base = state.base;
+  const dias = Array.from(state.baixaDias).sort().reverse();
+  const contaDia = d => { let n=0; for(const b of state.baixas.values()) if(b.dataISO===d) n++; return n; };
+  const mostrar = dias.slice(0, 8);
+  return `
+  <div class="load-grid">
+    <div class="dropzone load-card" id="dz-base">
+      <div class="load-step">1 · Arquivo padrão ${state.baseHandle && !state.baseQuebrada ? '<span class="link-badge">VINCULADO AO SHAREPOINT</span>' : ''}</div>
+      <div class="load-title">Cobrança de Rota</div>
+      ${base ? `
+        <div class="load-file"><span class="dot ${state.baseHandle && !state.precisaPermissao && !state.baseQuebrada ? 'ok' : 'warn'}"></span><b>${base.nome}</b></div>
+        <div class="muted load-meta">${base.registros} cobranças · rotas até <b style="color:var(--paper)">${fmtBR(base.ultimaRota)}</b>${base.modificado ? ` · versão salva em ${new Date(base.modificado).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}` : ''}</div>
+        ${state.baseHandle && !state.precisaPermissao && !state.baseQuebrada ? `<div class="muted load-meta">Atualiza sozinha quando o arquivo muda · <span id="base-check">${state.baseVerificadaEm ? 'conferido às '+state.baseVerificadaEm : 'conferindo...'}</span></div>` : ''}
+        ${!state.baseHandle ? `<div class="load-warn">Carregada sem vínculo: para não precisar subir todo dia, clique em <b>Vincular arquivo do SharePoint</b>.</div>` : ''}
+      ` : `<div class="muted load-meta">Vincule a planilha da pasta do SharePoint sincronizada no seu computador. Depois disso o painel lê a versão mais nova sozinho.</div>`}
+      ${state.precisaPermissao && !state.baseQuebrada ? `<div class="load-warn">O navegador pede sua autorização para ler o arquivo nesta abertura. Clique em <b>Liberar leitura</b> e escolha <b>Permitir em todas as visitas</b>, se aparecer.</div>` : ''}
+      ${state.baseQuebrada ? `<div class="load-warn">Não encontrei o arquivo vinculado (foi movido, renomeado ou a pasta deixou de sincronizar).</div>` : ''}
+      <div class="load-actions">
+        ${state.baseHandle && state.precisaPermissao && !state.baseQuebrada ? `<button class="btn btn-main" id="reload-base-btn">🔓 Liberar leitura</button>` : ''}
+        ${state.baseHandle && !state.precisaPermissao && !state.baseQuebrada ? `<button class="btn" id="reload-base-btn" title="Lê agora o arquivo vinculado">↻ Atualizar agora</button>` : ''}
+        <button class="btn ${(!state.baseHandle || state.baseQuebrada) ? 'btn-main' : ''}" id="pick-base-btn">${state.baseQuebrada ? 'Vincular de novo' : state.baseHandle ? 'Trocar arquivo' : '🔗 Vincular arquivo do SharePoint'}</button>
+      </div>
+      <details class="howto" ${!base ? 'open' : ''}>
+        <summary>Como configurar para não carregar todo dia</summary>
+        <ol>
+          <li>No SharePoint, abra a pasta onde está a <b>Cobrança de Rota</b> e clique em <b>Sincronizar</b> (ou <b>Adicionar atalho a Meus arquivos</b>).</li>
+          <li>Aguarde o OneDrive terminar: a pasta aparece no Explorador de Arquivos, no lado esquerdo, com o nome da empresa (ícone de prédio/nuvem azul).</li>
+          <li>Clique com o botão direito no arquivo e marque <b>Sempre manter neste dispositivo</b>.</li>
+          <li>Abra este painel no <b>Edge</b> ou no <b>Chrome</b>, clique em <b>Vincular arquivo do SharePoint</b> e escolha a planilha dessa pasta.</li>
+          <li>Pronto: o painel confere o arquivo a cada minuto e ao abrir. Se pedir autorização, clique em <b>Liberar leitura</b> → <b>Permitir em todas as visitas</b>.</li>
+        </ol>
+        <div class="muted" style="font-size:12px;">Use sempre o painel salvo no mesmo lugar e no mesmo navegador: o vínculo e as baixas ficam guardados nele.</div>
+      </details>
+      <input type="file" id="base-input" accept=".xlsx,.xlsm,.xls" style="display:none;">
+    </div>
+  </div>
+  <div class="load-foot">
+    ${state.toast ? `<div class="toast">${state.toast}</div>` : '<span></span>'}
+    <div style="display:flex;gap:14px;align-items:center;">
+      <span class="muted" style="font-size:12px;">${state.salvo===false ? '⚠ Este navegador não permitiu salvar; os dados somem ao fechar.' : (state.records.length||state.baixas.size ? '✓ Salvo neste computador/navegador' : '')}</span>
+      ${(state.records.length||state.baixas.size) ? `<button class="btn-ghost" id="clear-btn">Apagar tudo</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderConferencia(){ return '';
+  if(!state.records.length && !state.baixas.size) return '';
+  const dias = Array.from(state.baixaDias).sort();
+  const auto = state.records.filter(r=>r.origem==='fina740').length;
+  const pend = state.records.filter(r=>r.origem==='pendente').length;
+  const div = state.records.filter(r=>r.divergente).length;
+  const diasTxt = !dias.length ? 'nenhum FINA740 carregado'
+    : dias.length<=4 ? dias.map(fmtBR).join(', ') : `${fmtBR(dias[0])} a ${fmtBR(dias[dias.length-1])} (${dias.length} dias)`;
+  return `
+  <div class="conf-bar">
+    <div class="conf-stats">
+      <div><span class="field-label">Baixas FINA740</span><b class="mono">${state.baixas.size}</b> <span class="muted">· ${diasTxt}</span></div>
+      <div><span class="field-label">Pago? automático</span><b class="mono" style="color:var(--sage)">${auto}</b></div>
+      <div><span class="field-label">Aguardando baixa</span><b class="mono" style="color:var(--brass)">${pend}</b></div>
+      <div title="Linhas em que o Pago? manual discorda do FINA740"><span class="field-label">Divergências</span><b class="mono" style="color:${div?'var(--brick)':'var(--muted)'}">${div}</b></div>
+    </div>
+    <div class="conf-ctrl">
+      <label><input type="checkbox" id="opt-manual" ${state.usarManual?'checked':''}> Manter Pago? já preenchido</label>
+      <label><input type="checkbox" id="opt-diarota" ${state.incluirDiaRota?'checked':''}> Contar baixa no dia da rota</label>
+      ${state.records.length ? `<button class="btn" id="export-btn">Baixar planilha conferida</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function enderecoDe(r){
+  const k = Object.keys(r.raw||{}).find(k=>/endereco|logradouro/.test(normalize(k)));
+  const v = k ? String(r.raw[k]??'').trim() : '';
+  return v;
+}
+function situacao(r){ return r.pago===true ? 'adimplente' : r.pago===false ? 'inadimplente' : 'aguardando'; }
+function aplicarFiltroConv(){
+  const linhas = document.querySelectorAll('#conv-body tr');
+  if(!linhas.length) return;
+  const q = normalize(state.convBusca||'');
+  let vis = 0;
+  linhas.forEach(tr=>{
+    const ok = (state.convFiltro==='todos' || tr.dataset.sit===state.convFiltro) && (!q || tr.dataset.q.includes(q));
+    tr.style.display = ok ? '' : 'none'; if(ok) vis++;
+  });
+  const c = document.getElementById('conv-contagem'); if(c) c.textContent = vis+' de '+linhas.length+' clientes';
+}
+function exportarListaDia(){
+  const d = state.convDate;
+  const rows = state.records.filter(r=>r.dataISO===d && (!state.convPessoa || r.responsavel===state.convPessoa)).map(r=>({
+    'Código': r.codigo, 'Cliente': r.nome, 'Endereço': enderecoDe(r), 'Responsável': r.responsavel||'',
+    'Situação': r.pago===true?'ADIMPLENTE':r.pago===false?'INADIMPLENTE':'PAGO? EM BRANCO'
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rota '+fmtBR(d).replace(/\//g,'-'));
+  XLSX.writeFile(wb, `Rota_${d}_clientes.xlsx`);
+}
+function renderConversoes(){
+  const datas = Array.from(new Set(state.records.map(r=>r.dataISO))).sort();
+  if(!datas.length) return '<div class="empty-state"><p>Nenhuma rota carregada.</p></div>';
+  if(!state.convDate) state.convDate = hojeISO();
+  const d = state.convDate;
+  const dow = ['dom','seg','ter','qua','qui','sex','sáb'][weekday(d)];
+  const ant = datas.filter(x=>x<d).pop(), prox = datas.find(x=>x>d);
+  const nav = `<div class="field"><span class="field-label">Data da rota</span>
+      <div class="conv-nav">
+        <button type="button" data-conv-ir="${ant||''}" ${ant?'':'disabled'} aria-label="Rota anterior">‹</button>
+        <input type="date" id="conv-date" value="${d}" min="${datas[0]<d?datas[0]:d}" max="${datas[datas.length-1]>d?datas[datas.length-1]:d}">
+        <button type="button" data-conv-ir="${prox||''}" ${prox?'':'disabled'} aria-label="Próxima rota">›</button>
+      </div></div>`;
+  const doDia = state.records.filter(r=>r.dataISO===d);
+  const pessoasDia = Array.from(new Set(doDia.map(r=>r.responsavel).filter(Boolean))).sort();
+  if(state.convPessoa && !pessoasDia.includes(state.convPessoa)) state.convPessoa = '';
+  const recs = state.convPessoa ? doDia.filter(r=>r.responsavel===state.convPessoa) : doDia;
+  const seletor = pessoasDia.length>1 ? `<div class="tabs sub" role="group" aria-label="Responsável">
+      <button type="button" class="pessoa-btn ${state.convPessoa?'':'active'}" data-conv-pessoa="">Todos (${doDia.length})</button>
+      ${pessoasDia.map(x=>`<button type="button" class="pessoa-btn ${state.convPessoa===x?'active':''}" data-conv-pessoa="${x}" title="${x}">${nomeCurto(x,pessoasDia)} (${doDia.filter(r=>r.responsavel===x).length})</button>`).join('')}
+    </div>` : '';
+  if(!doDia.length){
+    return `<div class="conv-head">${nav}</div>
+      <div class="notice">Não há rota carregada em ${fmtBR(d)} (${dow}). ${ant?`Última rota anterior: <a href="#" data-conv-ir="${ant}" style="color:inherit;text-decoration:underline">${fmtBR(ant)}</a>.`:''} ${prox?`Próxima: <a href="#" data-conv-ir="${prox}" style="color:inherit;text-decoration:underline">${fmtBR(prox)}</a>.`:''}</div>`;
+  }
+  const { ini, fim } = janelaCobranca(d);
+  const s = statsFor(recs);
+  const adim = recs.filter(r=>r.pago===true).length, inad = recs.filter(r=>r.pago===false).length, pend = recs.filter(r=>r.pago===null).length;
+  const valor = recs.filter(r=>r.pago).reduce((a,r)=>a+r.valorBaixado,0);
+  const persons = Array.from(new Set(recs.map(r=>r.responsavel||'—'))).sort();
+  const porPessoa = persons.map(p=>{
+    const rp = recs.filter(r=>(r.responsavel||'—')===p);
+    const st = statsFor(rp);
+    return { p, ...st, pend: rp.filter(r=>r.pago===null).length, valor: rp.filter(r=>r.pago).reduce((a,r)=>a+r.valorBaixado,0) };
+  }).sort((a,b)=>b.rate-a.rate);
+  const ordem = r => r.pago===false ? 0 : r.pago===null ? 1 : 2;
+  const linhas = [...recs].sort((a,b)=> ordem(a)-ordem(b) || a.nome.localeCompare(b.nome));
+  const pill = r => r.pago===true ? '<span class="status-pill sim">ADIMPLENTE</span>' : r.pago===false ? '<span class="status-pill nao">INADIMPLENTE</span>' : '<span class="status-pill pend">EM BRANCO</span>';
+  const janelaTxt = ini===fim ? fmtBR(ini) : `${fmtBR(ini)} a ${fmtBR(fim)}`;
+  const temEnd = recs.some(r=>enderecoDe(r));
+  const pc = n => recs.length ? (n/recs.length*100).toFixed(1) : 0;
+  // clientes que entraram na rota no mês da data escolhida
+  const mesRecs = state.records.filter(r=>r.mes===recs[0].mes && (!state.convPessoa || r.responsavel===state.convPessoa));
+  const porCli = new Map();
+  mesRecs.forEach(r=>{ const k=r.cod||r.nome; const e=porCli.get(k)||{pagou:false,algum:false}; if(r.pago===true) e.pagou=true; if(r.pago!==null) e.algum=true; porCli.set(k,e); });
+  const cliMes = porCli.size, cliPagaram = Array.from(porCli.values()).filter(x=>x.pagou).length;
+  return `
+  <div class="conv-head">
+    ${nav}
+    <div class="muted" style="font-size:13px;">Rota de <b style="color:var(--paper)">${fmtBR(d)} (${dow})</b> · situação conforme a coluna <b style="color:var(--paper)">Pago?</b> da Cobrança de Rota</div>
+  </div>
+  ${seletor}
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="label">Clientes na rota</div><div class="value">${recs.length}</div></div>
+    <div class="kpi-card"><div class="label">Adimplentes (pagaram)</div><div class="value good">${adim}</div></div>
+    <div class="kpi-card"><div class="label">Inadimplentes</div><div class="value bad">${inad}</div></div>
+    <div class="kpi-card"><div class="label">Pago? em branco</div><div class="value brass">${pend}</div></div>
+    <div class="kpi-card"><div class="label">Taxa do dia</div><div class="value ${s.total? (s.rate>=state.goal?'good':'bad') : ''}">${s.total ? s.rate.toFixed(1)+'%' : '—'}</div></div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Análise da rota de ${fmtBR(d)}${state.convPessoa?' — '+state.convPessoa:''}</div>
+    <div style="font-size:14px;margin-bottom:6px;"><b class="mono">${recs.length}</b> clientes na rota − <b class="mono" style="color:var(--sage)">${adim}</b> pagos = <b class="mono" style="color:var(--brick)">${recs.length-adim}</b> sem pagamento confirmado${pend?` <span class="muted">(${pend} com Pago? em branco)</span>`:''}</div>
+    <div class="stack-bar" role="img" aria-label="${adim} adimplentes, ${inad} inadimplentes, ${pend} em branco"><i style="width:${pc(adim)}%;background:var(--sage)"></i><i style="width:${pc(pend)}%;background:var(--brass)"></i><i style="width:${pc(inad)}%;background:var(--brick)"></i></div>
+    <div class="muted" style="font-size:12.5px;">No mês de ${mesLabelFromKey(recs[0].mes)}: ${cliMes} clientes diferentes entraram na rota; ${cliPagaram} pagaram em algum dia e ${cliMes-cliPagaram} ainda não pagaram.</div>
+  </div>
+  ${pend ? `<div class="notice">${pend} cliente(s) com a coluna <b>Pago?</b> em branco na Cobrança de Rota: preencha Sim ou Não para entrarem na conta.</div>` : ''}
+  <div class="chart-card">
+    <div class="section-title">Clientes cobrados — rota de ${fmtBR(d)}</div>
+    <div class="conv-tools">
+      <button class="fchip ${state.convFiltro==='todos'?'active':''}" data-conv-filtro="todos" type="button">Todos (${recs.length})</button>
+      <button class="fchip ${state.convFiltro==='adimplente'?'active':''}" data-conv-filtro="adimplente" type="button">Adimplentes (${adim})</button>
+      <button class="fchip ${state.convFiltro==='inadimplente'?'active':''}" data-conv-filtro="inadimplente" type="button">Inadimplentes (${inad})</button>
+      ${pend?`<button class="fchip ${state.convFiltro==='aguardando'?'active':''}" data-conv-filtro="aguardando" type="button">Em branco (${pend})</button>`:''}
+      <input type="search" id="conv-busca" placeholder="Buscar código, nome ou endereço" value="${(state.convBusca||'').replace(/"/g,'&quot;')}" style="min-width:230px">
+      <button class="btn" id="conv-export" type="button">Baixar lista</button>
+      <span class="muted" id="conv-contagem" style="font-size:12.5px;"></span>
+    </div>
+    ${temEnd ? '' : '<div class="muted" style="font-size:12.5px;margin-bottom:10px;">A planilha de rota não tem uma coluna <b>Endereço</b>. Inclua-a na Cobrança de Rota (qualquer coluna com "Endereço" no nome) para o endereço aparecer aqui.</div>'}
+    <div class="mm-scroll"><table>
+      <thead><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Responsável</th><th>Situação</th></tr></thead>
+      <tbody id="conv-body">${linhas.map(r=>`<tr data-sit="${situacao(r)}" data-q="${normalize([r.codigo,r.nome,enderecoDe(r)].join(' ')).replace(/"/g,'')}">
+        <td class="mono">${r.codigo}</td><td>${r.nome}</td><td>${enderecoDe(r)||'—'}</td><td>${r.responsavel||'—'}</td>
+        <td>${pill(r)}${r.divergente?' <span class="div-flag" title="Pago? manual: '+(r.pagoManual?'SIM':'NÃO')+' · FINA740: '+(r.pagoAuto?'SIM':'NÃO')+'">≠</span>':''}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </div>
+  ${state.convPessoa ? '' : `<div class="chart-card">
+    <div class="section-title">Por responsável — rota de ${fmtBR(d)}</div>
+    <table>
+      <thead><tr><th>Responsável</th><th>Na rota</th><th>Adimplentes</th><th>Pago? em branco</th><th>Taxa</th></tr></thead>
+      <tbody>${porPessoa.map(x=>`<tr>
+        <td>${x.p}</td><td class="mono">${x.total+x.pend}</td><td class="mono">${x.pagos}</td><td class="mono">${x.pend||'—'}</td>
+        <td class="rate-cell" style="color:${x.total?(x.rate>=state.goal?'var(--sage)':'var(--brick)'):'var(--muted)'}">${x.total?x.rate.toFixed(1)+'%':'—'}</td></tr>`).join('')}</tbody>
+    </table>
+  </div>`}`;
+}
+
+
+const FER_KEY='glp-feriados-extra';
+function isoOf(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+function addDias(iso,n){ const [y,m,d]=iso.split('-').map(Number); return isoOf(new Date(y,m-1,d+n)); }
+function feriadosExtra(){ try{ const l=JSON.parse(localStorage.getItem(FER_KEY)||'[]'); return Array.isArray(l)?l:[]; }catch(e){ return []; } }
+function salvarFeriadosExtra(l){ try{ localStorage.setItem(FER_KEY, JSON.stringify(l)); }catch(e){} }
+function pascoa(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+    h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+    mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  return isoOf(new Date(y,mes-1,dia));
+}
+function mapaFeriados(anos){
+  const m=new Map();
+  const fx=[['01-01','Confraternização Universal'],['01-20','São Sebastião (Rio)'],['04-21','Tiradentes'],['04-23','São Jorge (RJ)'],['05-01','Dia do Trabalho'],['09-07','Independência'],['10-12','N. Sra. Aparecida'],['11-02','Finados'],['11-15','Proclamação da República'],['11-20','Consciência Negra'],['12-25','Natal']];
+  anos.forEach(y=>{
+    fx.forEach(([md,n])=>m.set(y+'-'+md,n));
+    const p=pascoa(y);
+    m.set(addDias(p,-48),'Carnaval (segunda)'); m.set(addDias(p,-47),'Carnaval (terça)');
+    m.set(addDias(p,-2),'Sexta-feira Santa'); m.set(addDias(p,60),'Corpus Christi');
+  });
+  feriadosExtra().forEach(f=>{ if(f.data) m.set(f.data, f.nome||'Feriado'); });
+  return m;
+}
+function classeDia(iso, mapa){
+  if(mapa.has(iso)) return { tipo:'feriado', ref:iso, nome:mapa.get(iso) };
+  let j=addDias(iso,-1), achou=null, guarda=0;
+  while(guarda++<14){
+    const w=weekday(j), fer=mapa.has(j);
+    if(fer && w>=1 && w<=5 && !achou) achou={ iso:j, nome:mapa.get(j) };
+    if(fer || w===0 || w===6){ j=addDias(j,-1); continue; }
+    break;
+  }
+  return achou ? { tipo:'pos', ref:achou.iso, nome:achou.nome } : { tipo:'normal' };
+}
+function agrFer(lista){
+  const total=lista.reduce((a,x)=>a+x.total,0), pagos=lista.reduce((a,x)=>a+x.pagos,0);
+  return { dias:lista.length, total, pagos, rate: total? pagos/total*100 : null };
+}
+const NOMES_DOW=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+function renderFeriados(){
+  if(!state.records.length) return '<div class="empty-state"><p>Nenhuma rota carregada.</p></div>';
+  const pessoas=Array.from(new Set(state.records.map(r=>r.responsavel).filter(Boolean))).sort();
+  if(state.ferPessoa && !pessoas.includes(state.ferPessoa)) state.ferPessoa='';
+  const recs=state.ferPessoa? state.records.filter(r=>r.responsavel===state.ferPessoa) : state.records;
+  const datas=Array.from(new Set(recs.map(r=>r.dataISO))).sort();
+  const anos=new Set(); datas.forEach(d=>{ const y=Number(d.slice(0,4)); anos.add(y-1); anos.add(y); anos.add(y+1); });
+  const mapa=mapaFeriados(Array.from(anos));
+  const dias=[]; let semPago=0;
+  datas.forEach(d=>{
+    const v=recs.filter(r=>r.dataISO===d && r.pago!==null);
+    if(!v.length){ semPago++; return; }
+    const c=classeDia(d,mapa);
+    dias.push({ iso:d, dow:weekday(d), total:v.length, pagos:v.filter(r=>r.pago).length, ...c });
+  });
+  const normais=dias.filter(x=>x.tipo==='normal'), fer=dias.filter(x=>x.tipo==='feriado'), pos=dias.filter(x=>x.tipo==='pos');
+  const posSeg=pos.filter(x=>weekday(x.ref)===1), ferSeg=fer.filter(x=>x.dow===1);
+  const afet=[...fer,...pos];
+  const seletor = pessoas.length>1 ? `<div class="tabs sub" role="group" aria-label="Responsável">
+      <button type="button" class="pessoa-btn ${state.ferPessoa?'':'active'}" data-fer-pessoa="">Todos</button>
+      ${pessoas.map(x=>`<button type="button" class="pessoa-btn ${state.ferPessoa===x?'active':''}" data-fer-pessoa="${x}" title="${x}">${nomeCurto(x,pessoas)}</button>`).join('')}
+    </div>` : '';
+  const pct=v=>v==null?'—':v.toFixed(1)+'%';
+  const aviso=n=> n===0 ? ' <span class="muted">(sem dados)</span>' : n<3 ? ' <span style="color:var(--brass)" title="Poucos dias para tirar conclusão">⚠ amostra pequena</span>' : '';
+  const grupos=[
+    ['Rotas normais', agrFer(normais), 'var(--accent)'],
+    ['Rota no próprio feriado', agrFer(fer), 'var(--brass)'],
+    ['Rota em segunda-feira de feriado', agrFer(ferSeg), 'var(--brass)'],
+    ['Dia útil seguinte a um feriado', agrFer(pos), 'var(--brick)'],
+    ['Dia útil seguinte a feriado de segunda', agrFer(posSeg), 'var(--brick)']
+  ];
+  const base=grupos[0][1].rate;
+  const barras=grupos.map(([n,g,cor])=>`<tr>
+    <td>${n}${aviso(g.dias)}</td><td class="mono">${g.dias}</td><td class="mono">${g.total}</td><td class="mono">${g.pagos}</td>
+    <td style="min-width:180px"><div class="stack-bar" style="margin:0"><i style="width:${g.rate==null?0:Math.min(100,g.rate)}%;background:${cor}"></i></div></td>
+    <td class="rate-cell">${pct(g.rate)}</td>
+    <td class="mono">${(g.rate==null||base==null||g===grupos[0][1])?'—':((g.rate-base>=0?'+':'')+(g.rate-base).toFixed(1)+' p.p.')}</td></tr>`).join('');
+  // por dia da semana
+  const linhasDow=[1,2,3,4,5,6].map(w=>{
+    const n=agrFer(normais.filter(x=>x.dow===w)), a=agrFer(afet.filter(x=>x.dow===w));
+    if(!n.dias && !a.dias) return '';
+    const dif=(n.rate!=null&&a.rate!=null)? a.rate-n.rate : null;
+    return `<tr><td style="text-transform:capitalize">${NOMES_DOW[w]}</td>
+      <td class="mono">${n.dias}</td><td class="rate-cell">${pct(n.rate)}</td>
+      <td class="mono">${a.dias}</td><td class="rate-cell">${pct(a.rate)}${a.dias&&a.dias<3?' ⚠':''}</td>
+      <td class="mono" style="color:${dif==null?'var(--muted)':dif<0?'var(--brick)':'var(--sage)'}">${dif==null?'—':((dif>=0?'+':'')+dif.toFixed(1)+' p.p.')}</td></tr>`;
+  }).join('');
+  // detalhe dos dias afetados
+  const mediaDow=w=>{ const g=agrFer(normais.filter(x=>x.dow===w)); return g.rate; };
+  const detalhe=[...afet].sort((a,b)=>b.iso.localeCompare(a.iso)).map(x=>{
+    const rate=x.pagos/x.total*100, ref=mediaDow(x.dow), dif=ref==null?null:rate-ref;
+    return `<tr><td class="mono">${fmtBR(x.iso)}</td><td>${NOMES_DOW[x.dow]}</td>
+      <td>${x.tipo==='feriado' ? 'Feriado: '+x.nome : 'Após '+x.nome+' ('+fmtBR(x.ref).slice(0,5)+', '+NOMES_DOW[weekday(x.ref)]+')'}</td>
+      <td class="mono">${x.total}</td><td class="mono">${x.pagos}</td><td class="rate-cell">${rate.toFixed(1)}%</td>
+      <td class="mono" style="color:${dif==null?'var(--muted)':dif<0?'var(--brick)':'var(--sage)'}">${dif==null?'—':((dif>=0?'+':'')+dif.toFixed(1)+' p.p.')}</td></tr>`;
+  }).join('');
+  const extras=feriadosExtra();
+  const sobre = ferSeg.length+posSeg.length ? '' : '<div class="notice">Ainda não há nos dados carregados nenhuma rota em segunda-feira de feriado nem no dia útil seguinte a um. Carregue mais histórico ou cadastre feriados locais abaixo.</div>';
+  return `
+  <div class="conv-head"><div class="muted" style="font-size:13px;">Taxa = clientes com <b style="color:var(--paper)">Pago? = Sim</b> ÷ clientes com Pago? preenchido, somando todos os dias de cada grupo. Período analisado: <b style="color:var(--paper)">${datas.length?fmtBR(datas[0])+' a '+fmtBR(datas[datas.length-1]):'—'}</b> · ${dias.length} dias de rota${semPago?` (${semPago} sem Pago? preenchido, ignorados)`:''}.</div></div>
+  ${seletor}
+  ${sobre}
+  <div class="chart-card">
+    <div class="section-title">Feriado × taxa de pagamento</div>
+    <div class="mm-scroll"><table>
+      <thead><tr><th>Grupo de rotas</th><th>Dias</th><th>Clientes</th><th>Pagos</th><th></th><th>Taxa</th><th>vs. rotas normais</th></tr></thead>
+      <tbody>${barras}</tbody>
+    </table></div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Por dia da semana — normal × afetado por feriado</div>
+    <div class="mm-scroll"><table>
+      <thead><tr><th>Dia</th><th>Dias normais</th><th>Taxa normal</th><th>Dias afetados</th><th>Taxa afetada</th><th>Diferença</th></tr></thead>
+      <tbody>${linhasDow||'<tr><td colspan="6" class="muted">Sem dados.</td></tr>'}</tbody>
+    </table></div>
+    <div class="muted" style="font-size:12.5px;margin-top:8px;">"Afetado" = rota no próprio feriado ou no primeiro dia útil depois dele (inclui feriado seguido de fim de semana).</div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Dias afetados por feriado</div>
+    <div class="mm-scroll"><table>
+      <thead><tr><th>Data</th><th>Dia</th><th>Motivo</th><th>Clientes</th><th>Pagos</th><th>Taxa</th><th>vs. média do mesmo dia da semana</th></tr></thead>
+      <tbody>${detalhe||'<tr><td colspan="7" class="muted">Nenhuma rota carregada caiu em feriado ou logo depois.</td></tr>'}</tbody>
+    </table></div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Calendário de feriados</div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:8px;">Já incluídos: feriados nacionais, Carnaval, Sexta-feira Santa, Corpus Christi, São Sebastião (20/01) e São Jorge (23/04) do Rio de Janeiro. Adicione abaixo outros (ponto facultativo, feriado de bairro, emenda). Ficam salvos neste navegador.</div>
+    <div class="conv-tools">
+      <input type="date" id="fer-data"><input type="search" id="fer-nome" placeholder="Nome do feriado" style="min-width:220px">
+      <button class="btn" id="fer-add" type="button">Adicionar</button>
+    </div>
+    ${extras.length? `<div class="mm-scroll"><table><thead><tr><th>Data</th><th>Nome</th><th></th></tr></thead><tbody>${extras.sort((a,b)=>a.data.localeCompare(b.data)).map(f=>`<tr><td class="mono">${fmtBR(f.data)}</td><td>${f.nome||'Feriado'}</td><td><button class="btn" type="button" data-fer-del="${f.data}">Remover</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="muted" style="font-size:12.5px;">Nenhum feriado extra cadastrado.</div>'}
+  </div>`;
+}
+
+function hojeISO(){ return isoOf(new Date()); }
+function mesInicial(months){ const h=hojeISO().slice(0,7); return months.includes(h) ? h : (months[months.length-1]||null); }
+function nomeCurto(n,lista){ const p=String(n).split(' ')[0]; return lista.filter(x=>String(x).split(' ')[0]===p).length>1 ? n : p; }
+function renderEmpty(){
+  return `<div class="empty-state">
+    <h2>Sem dados ainda</h2>
+    <p>Ainda não há dados publicados para você neste painel. O administrador publica a Cobrança de Rota na <b>Central de importação</b>; depois clique em <b>Atualizar dados</b> no menu. Se já foi publicada e continua vazio, confira se o seu <b>Nome nas planilhas</b> é igual ao da coluna Responsável.</p>
+  </div>`;
+}
+
+function renderKpis(monthRecords, overall){
+  const goodBad = overall.rate >= state.goal ? 'good' : 'bad';
+  return `
+  <div class="goal-block">
+    ${stampHTML(overall.rate, state.goal)}
+    <div class="kpi-row" style="flex:1;">
+      <div class="kpi-card">
+        <div class="label">Cobranças no período</div>
+        <div class="value">${overall.total}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Pagas</div>
+        <div class="value brass">${overall.pagos}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Taxa de recuperação</div>
+        <div class="value ${goodBad}">${overall.rate.toFixed(1)}%</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Distância da meta</div>
+        <div class="value ${goodBad}">${overall.rate-state.goal>=0?'+':''}${(overall.rate-state.goal).toFixed(1)} p.p.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTabs(){
+  return `<div class="tabs">
+    <button class="tab-btn ${state.view==='equipe'?'active':''}" data-view="equipe">Visão da equipe</button>
+    <button class="tab-btn ${state.view==='individual'?'active':''}" data-view="individual">Visão individual</button>
+    <button class="tab-btn ${state.view==='conversoes'?'active':''}" data-view="conversoes">Rota do dia</button>
+    <button class="tab-btn ${state.view==='feriados'?'active':''}" data-view="feriados">Feriados</button>
+  </div>`;
+}
+
+function mmCell(recs, extraClass=''){
+  const st = statsFor(recs);
+  if(!st.total) return `<td class="mm-cell ${extraClass}"><span style="color:var(--muted);font-weight:400;">—</span></td>`;
+  const hit = st.rate >= state.goal;
+  const bg = hit ? 'var(--sage)' : 'var(--brick)';
+  const fg = hit ? '#0E1516' : '#FFF4EF';
+  return `<td class="mm-cell ${extraClass}" title="${st.pagos} pagas de ${st.total} cobranças"><span style="background:${bg};color:${fg};">${st.rate.toFixed(1)}%</span></td>`;
+}
+
+function renderMonthlyMatrix(persons, title='Desempenho individual mês a mês'){
+  const months = monthsAvailable(state.records);
+  if(!months.length) return '';
+  const rows = persons.map(p=>{
+    const recsP = state.records.filter(r=>r.responsavel===p);
+    return `<tr><td>${p}</td>${months.map(m=>mmCell(recsP.filter(r=>r.mes===m))).join('')}${mmCell(recsP,'mm-total')}</tr>`;
+  }).join('');
+  const team = `<tr class="mm-team"><td>Equipe</td>${months.map(m=>mmCell(state.records.filter(r=>r.mes===m))).join('')}${mmCell(state.records,'mm-total')}</tr>`;
+  return `
+  <div class="chart-card">
+    <div class="section-title">${title}</div>
+    <div class="mm-scroll">
+      <table class="mm-table">
+        <thead><tr><th>Responsável</th>${months.map(m=>`<th>${mesLabelFromKey(m)}</th>`).join('')}<th class="mm-total">Consolidado</th></tr></thead>
+        <tbody>${rows}${team}</tbody>
+      </table>
+    </div>
+    <div class="mm-legend">
+      <span><i style="background:var(--sage)"></i>Na meta (${state.goal}%)</span>
+      <span><i style="background:var(--brick)"></i>Abaixo da meta</span>
+      <span>Passe o mouse para ver pagas/cobranças</span>
+    </div>
+  </div>`;
+}
+
+function renderEquipe(){
+  const monthRecords = periodRecords(state.records, state.selectedMonth);
+  const persons = distinctPersons(state.records);
+  const perPerson = persons.map(p=>{
+    const recs = monthRecords.filter(r=>r.responsavel===p);
+    const s = statsFor(recs);
+    return {p, ...s};
+  }).sort((a,b)=>b.rate-a.rate);
+
+  const months = monthsAvailable(state.records);
+  const trend = months.map(m=>{
+    const recs = state.records.filter(r=>r.mes===m);
+    return {mes:m, ...statsFor(recs)};
+  });
+
+  const rows = perPerson.map(row=>`
+    <tr>
+      <td>${row.p}</td>
+      <td class="mono">${row.total}</td>
+      <td class="mono">${row.pagos}</td>
+      <td class="rate-cell ${row.rate>=state.goal?'':'muted'}" style="color:${row.rate>=state.goal?'var(--sage)':'var(--brick)'}">${row.rate.toFixed(1)}%</td>
+      <td>${row.rate>=state.goal ? '<span class="status-pill sim">NA META</span>' : '<span class="status-pill nao">ABAIXO</span>'}</td>
+    </tr>`).join('');
+
+  const rankedClients = clientRanking(monthRecords);
+  const sortedClients = sortClients(rankedClients, state.clientSort.col, state.clientSort.dir);
+  const clientRows = sortedClients.map(c=>`
+    <tr>
+      <td>${c.nome}</td>
+      <td class="mono">${c.appearances}</td>
+      <td class="rate-cell" style="color:${c.total? (c.rate>=state.goal?'var(--sage)':'var(--brick)') : 'var(--muted)'}">${c.total ? c.rate.toFixed(1)+'%' : '—'}</td>
+    </tr>`).join('');
+  const sortArrow = (col)=> state.clientSort.col===col ? (state.clientSort.dir==='asc' ? ' ▲' : ' ▼') : '';
+
+  return `
+  <div class="chart-card">
+    <div class="section-title">Taxa por responsável — ${periodLabel(state.selectedMonth)}</div>
+    <div style="position:relative;height:${Math.max(160, perPerson.length*46+60)}px;">
+      <canvas id="bar-chart" role="img" aria-label="Gráfico de barras da taxa de recuperação por responsável"></canvas>
+    </div>
+  </div>
+  ${state.selectedMonth==='all' ? renderMonthlyMatrix(persons) : ''}
+  <div class="chart-card">
+    <div class="section-title">Evolução da taxa da equipe (desde abril)</div>
+    <div style="position:relative;height:260px;">
+      <canvas id="line-chart" role="img" aria-label="Gráfico de linha da evolução mensal da taxa de recuperação da equipe"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Desempenho diário da equipe — ${periodLabel(state.selectedMonth)}</div>
+    <div style="position:relative;height:240px;">
+      <canvas id="daily-chart-team" role="img" aria-label="Gráfico de barras da taxa de recuperação diária da equipe no mês"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Atingimento acumulado da meta — ${periodLabel(state.selectedMonth)}</div>
+    <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;">Taxa acumulada do mês até cada dia (pagas ÷ cobranças desde o dia 1)${state.selectedMonth==='all' ? ' · o acumulado recomeça a cada mês' : ''}</div>
+    <div style="position:relative;height:260px;">
+      <canvas id="cum-chart-team" role="img" aria-label="Gráfico de linha do atingimento acumulado da meta por dia"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Clientes mais cobrados — ${periodLabel(state.selectedMonth)}</div>
+    <div style="position:relative;height:${Math.max(160, Math.min(10, rankedClients.length)*40+50)}px;margin-bottom:18px;">
+      <canvas id="client-rank-chart" role="img" aria-label="Gráfico de barras dos clientes com mais cobranças"></canvas>
+    </div>
+    <table>
+      <thead><tr>
+        <th class="sortable" data-sort-col="nome">Cliente${sortArrow('nome')}</th>
+        <th class="sortable" data-sort-col="appearances">Nº de cobranças${sortArrow('appearances')}</th>
+        <th class="sortable" data-sort-col="rate">Taxa de recuperação${sortArrow('rate')}</th>
+      </tr></thead>
+      <tbody>${clientRows || '<tr><td colspan="3" class="muted">Sem registros neste período.</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderIndividual(){
+  const persons = distinctPersons(state.records);
+  if(!state.selectedPerson) state.selectedPerson = persons[0] || null;
+
+  const chips = persons.map(p=>`<button class="chip ${p===state.selectedPerson?'active':''}" data-person="${p}">${p}</button>`).join('');
+
+  const monthRecords = periodRecords(state.records.filter(r=>r.responsavel===state.selectedPerson), state.selectedMonth);
+  const s = statsFor(monthRecords);
+
+  const months = monthsAvailable(state.records);
+  const trend = months.map(m=>{
+    const recs = state.records.filter(r=>r.mes===m && r.responsavel===state.selectedPerson);
+    return { mes:m, ...statsFor(recs) };
+  });
+
+  return `
+  <div class="person-chips">${chips || '<span class="muted">Nenhum responsável encontrado.</span>'}</div>
+  ${state.selectedPerson ? `
+  <div class="goal-block">
+    ${stampHTML(s.rate, state.goal)}
+    <div class="kpi-row" style="flex:1;">
+      <div class="kpi-card"><div class="label">Cobranças no período</div><div class="value">${s.total}</div></div>
+      <div class="kpi-card"><div class="label">Pagas</div><div class="value brass">${s.pagos}</div></div>
+      <div class="kpi-card"><div class="label">Taxa</div><div class="value ${s.rate>=state.goal?'good':'bad'}">${s.rate.toFixed(1)}%</div></div>
+      <div class="kpi-card"><div class="label">Distância da meta</div><div class="value ${s.rate>=state.goal?'good':'bad'}">${s.rate-state.goal>=0?'+':''}${(s.rate-state.goal).toFixed(1)} p.p.</div></div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Desempenho diário de ${state.selectedPerson} — ${periodLabel(state.selectedMonth)}</div>
+    <div style="position:relative;height:240px;">
+      <canvas id="daily-chart-ind" role="img" aria-label="Gráfico de barras da taxa de recuperação diária do responsável selecionado no mês"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="section-title">Atingimento acumulado da meta — ${state.selectedPerson} · ${periodLabel(state.selectedMonth)}</div>
+    <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px;">Taxa acumulada do mês até cada dia (pagas ÷ cobranças desde o dia 1)${state.selectedMonth==='all' ? ' · o acumulado recomeça a cada mês' : ''}</div>
+    <div style="position:relative;height:260px;">
+      <canvas id="cum-chart-ind" role="img" aria-label="Gráfico de linha do atingimento acumulado da meta por dia do responsável selecionado"></canvas>
+    </div>
+  </div>
+  ${state.selectedMonth==='all' ? renderMonthlyMatrix([state.selectedPerson], `Desempenho de ${state.selectedPerson} mês a mês`) : ''}
+  <div class="chart-card">
+    <div class="section-title">Evolução de ${state.selectedPerson} (desde abril)</div>
+    <div style="position:relative;height:240px;">
+      <canvas id="line-chart-ind" role="img" aria-label="Gráfico de linha da evolução mensal da taxa de recuperação do responsável selecionado"></canvas>
+    </div>
+  </div>` : ''}`;
+}
+
+const barLabelPlugin = {
+  id:'barLabels',
+  afterDatasetsDraw(chart){
+    const meta = chart.getDatasetMeta(0);
+    const isHorizontal = chart.options.indexAxis === 'y';
+    const ctx = chart.ctx;
+    meta.data.forEach((el, i)=>{
+      const value = chart.data.datasets[0].data[i];
+      if(value===undefined || value===null) return;
+      ctx.save();
+      ctx.fillStyle = '#EDEFEA';
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      if(isHorizontal){
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(value+'%', el.x+8, el.y);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(value+'%', el.x, el.y-6);
+      }
+      ctx.restore();
+    });
+  }
+};
+
+const lineLabelPlugin = {
+  id:'lineLabels',
+  afterDatasetsDraw(chart){
+    const meta = chart.getDatasetMeta(0);
+    const ctx = chart.ctx;
+    meta.data.forEach((el,i)=>{
+      const value = chart.data.datasets[0].data[i];
+      if(value===undefined || value===null) return;
+      ctx.save();
+      ctx.fillStyle = '#EDEFEA';
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(value+'%', el.x, el.y-8);
+      ctx.restore();
+    });
+  }
+};
+
+const countLabelPlugin = {
+  id:'countLabels',
+  afterDatasetsDraw(chart){
+    const meta = chart.getDatasetMeta(0);
+    const isHorizontal = chart.options.indexAxis === 'y';
+    const ctx = chart.ctx;
+    meta.data.forEach((el,i)=>{
+      const value = chart.data.datasets[0].data[i];
+      if(value===undefined || value===null) return;
+      ctx.save();
+      ctx.fillStyle = '#EDEFEA';
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      if(isHorizontal){
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(value, el.x+8, el.y);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(value, el.x, el.y-6);
+      }
+      ctx.restore();
+    });
+  }
+};
+
+function buildCumChart(cumCtx, daily, gridColor, tickColor){
+    // acumulado do mês, dia a dia (recomeça quando o mês muda)
+    let accT = 0, accP = 0, mesAtual = null;
+    const cum = daily.map(d=>{
+      const mes = d.iso.slice(0,7);
+      if(mes !== mesAtual){ accT = 0; accP = 0; mesAtual = mes; }
+      accT += d.total; accP += d.pagos;
+      return { ...d, accT, accP, accRate: accT ? accP/accT*100 : 0, novoMes: accT === d.total };
+    });
+  if(cumCtx){
+      const cor = v => v >= state.goal ? '#4FB6A8' : '#D9694F';
+      // escala ajustada ao intervalo dos dados, para a oscilação aparecer
+      const vals = cum.map(d=>d.accRate).concat([state.goal]);
+      const yMin = Math.max(0, Math.floor((Math.min(...vals)-5)/10)*10);
+      const yMax = Math.min(100, Math.ceil((Math.max(...vals)+5)/10)*10);
+      return new Chart(cumCtx, {
+        type:'line',
+        data:{
+          labels: cum.map(d=>d.day),
+          datasets:[
+            {
+              label:'Acumulado do mês',
+              data: cum.map(d=>Number(d.accRate.toFixed(1))),
+              borderWidth:2.5, tension:0.25, fill:false,
+              pointRadius:3, pointHoverRadius:6,
+              pointBackgroundColor: cum.map(d=>cor(d.accRate)), pointBorderColor: cum.map(d=>cor(d.accRate)),
+              segment:{
+                borderColor: c => cor(c.p1.parsed.y),
+                borderDash: c => cum[c.p1DataIndex].novoMes ? [2,4] : undefined
+              }
+            },
+            {
+              label:'Meta ('+state.goal+'%)',
+              data: cum.map(()=>state.goal),
+              borderColor:'#E3A63D', borderDash:[5,5], borderWidth:1.5, pointRadius:0, fill:false
+            }
+          ]
+        },
+        plugins:[{
+          id:'cumLabels',
+          afterDatasetsDraw(chart){
+            const pts = chart.getDatasetMeta(0).data;
+            if(!pts.length) return;
+            const muitos = cum.length > 40;               // período geral: só o fechamento de cada mês
+            const gap = pts.length > 1 ? (pts[pts.length-1].x - pts[0].x)/(pts.length-1) : 999;
+            const alterna = !muitos && gap < 40;          // pontos próximos: alterna acima/abaixo
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = '600 10.5px "IBM Plex Mono", monospace';
+            ctx.textAlign = 'center';
+            pts.forEach((el,i)=>{
+              const d = cum[i];
+              const fimDoMes = i === cum.length-1 || cum[i+1].iso.slice(0,7) !== d.iso.slice(0,7);
+              if(muitos && !fimDoMes) return;
+              const txt = d.accRate.toFixed(1)+'%';
+              const abaixo = alterna && i % 2 === 1;
+              const y = abaixo ? el.y + 16 : el.y - 9;
+              ctx.fillStyle = 'rgba(18,24,26,0.85)';
+              const w = ctx.measureText(txt).width + 6;
+              ctx.fillRect(el.x - w/2, y - 11, w, 13);
+              ctx.fillStyle = cor(d.accRate);
+              ctx.textBaseline = 'alphabetic';
+              ctx.fillText(txt, el.x, y);
+            });
+            ctx.restore();
+          }
+        }],
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{top:14, left:14, right:24}},
+          interaction:{mode:'index', intersect:false},
+          plugins:{
+            legend:{display:true, labels:{color:'#9AA6A5', usePointStyle:true, boxWidth:8,
+              generateLabels: ch => Chart.defaults.plugins.legend.labels.generateLabels(ch).map((l,i)=> i===0 ? {...l, fillStyle:'#4FB6A8', strokeStyle:'#4FB6A8'} : l)}},
+            tooltip:{
+              filter: item => item.datasetIndex === 0,
+              callbacks:{
+                label:(ctx)=>{
+                  const d = cum[ctx.dataIndex];
+                  const diff = d.accRate - state.goal;
+                  return [`Acumulado: ${d.accRate.toFixed(1)}% (${d.accP}/${d.accT})`,
+                          diff >= 0 ? `Acima da meta: +${diff.toFixed(1)} p.p.` : `Faltam ${Math.abs(diff).toFixed(1)} p.p.`,
+                          `No dia: ${d.rate.toFixed(1)}% (${d.pagos}/${d.total})`];
+                }
+              }
+            }
+          },
+          scales:{
+            x:{grid:{display:false},ticks:{color:tickColor, maxRotation:0, autoSkip:true}},
+            y:{min:yMin,max:yMax,grid:{color:gridColor},ticks:{color:tickColor,callback:v=>v+'%'}}
+          }
+        }
+      });
+    }
+
+  return null;
+}
+
+function drawCharts(){
+  const gridColor = 'rgba(237,239,234,0.08)';
+  const tickColor = '#9AA6A5';
+
+  if(state.view==='equipe' && state.records.length){
+    const monthRecords = periodRecords(state.records, state.selectedMonth);
+    const persons = distinctPersons(state.records);
+    const perPerson = persons.map(p=>{
+      const recs = monthRecords.filter(r=>r.responsavel===p);
+      return { p, ...statsFor(recs) };
+    }).sort((a,b)=>b.rate-a.rate);
+
+    const barCtx = document.getElementById('bar-chart');
+    if(barCtx){
+      if(chartBar) chartBar.destroy();
+      chartBar = new Chart(barCtx, {
+        type:'bar',
+        data:{
+          labels: perPerson.map(x=>x.p),
+          datasets:[{
+            label:'Taxa de recuperação',
+            data: perPerson.map(x=>Number(x.rate.toFixed(1))),
+            backgroundColor: perPerson.map(x=> x.rate>=state.goal ? '#4FB6A8' : '#D9694F'),
+            borderRadius:4,
+            maxBarThickness:26
+          }]
+        },
+        options:{
+          indexAxis:'y',
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{right:36}},
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:(ctx)=>`${ctx.parsed.x}%`}}
+          },
+          scales:{
+            x:{min:0,max:100,grid:{color:gridColor},ticks:{color:tickColor,callback:v=>v+'%'}},
+            y:{grid:{display:false},ticks:{color:'#EDEFEA'}}
+          }
+        },
+        plugins:[{
+          id:'goalLine',
+          afterDraw(chart){
+            const {ctx, chartArea, scales} = chart;
+            const x = scales.x.getPixelForValue(state.goal);
+            ctx.save();
+            ctx.strokeStyle = '#E3A63D';
+            ctx.setLineDash([4,4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, chartArea.top);
+            ctx.lineTo(x, chartArea.bottom);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }, barLabelPlugin]
+      });
+    }
+
+    const months = monthsAvailable(state.records);
+    const trend = months.map(m=> statsFor(state.records.filter(r=>r.mes===m)));
+    const lineCtx = document.getElementById('line-chart');
+    if(lineCtx){
+      if(chartLine) chartLine.destroy();
+      chartLine = new Chart(lineCtx, {
+        type:'line',
+        data:{
+          labels: months.map(mesLabelFromKey),
+          datasets:[
+            {
+              label:'Taxa de recuperação',
+              data: trend.map(t=>Number(t.rate.toFixed(1))),
+              borderColor:'#E3A63D',
+              backgroundColor:'rgba(227,166,61,0.1)',
+              fill:true, tension:0.25, pointRadius:4, pointBackgroundColor:'#E3A63D'
+            },
+            {
+              label:'Meta',
+              data: months.map(()=>state.goal),
+              borderColor:'#9AA6A5',
+              borderDash:[5,5],
+              pointRadius:0,
+              fill:false
+            }
+          ]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{top:24}},
+          plugins:{
+            legend:{display:true, labels:{color:'#9AA6A5', usePointStyle:true, boxWidth:8}},
+            tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.y}%`}}
+          },
+          scales:{
+            x:{grid:{display:false},ticks:{color:tickColor}},
+            y:{min:0,max:100,grid:{color:gridColor},ticks:{color:tickColor,callback:v=>v+'%'}}
+          }
+        },
+        plugins:[lineLabelPlugin]
+      });
+    }
+
+    const dailyTeam = dailyStats(monthRecords);
+    const dailyTeamCtx = document.getElementById('daily-chart-team');
+    if(dailyTeamCtx){
+      if(chartDailyTeam) chartDailyTeam.destroy();
+      chartDailyTeam = new Chart(dailyTeamCtx, {
+        type:'bar',
+        data:{
+          labels: dailyTeam.map(d=>d.day),
+          datasets:[{
+            label:'Taxa diária',
+            data: dailyTeam.map(d=>Number(d.rate.toFixed(1))),
+            backgroundColor: dailyTeam.map(d=> d.rate>=state.goal ? '#4FB6A8' : '#D9694F'),
+            borderRadius:4,
+            maxBarThickness:22
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{top:24}},
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{
+              label:(ctx)=>`${ctx.parsed.y}% (${dailyTeam[ctx.dataIndex].pagos}/${dailyTeam[ctx.dataIndex].total})`
+            }}
+          },
+          scales:{
+            x:{grid:{display:false},ticks:{color:tickColor}},
+            y:{min:0,max:100,grid:{color:gridColor},ticks:{color:tickColor,callback:v=>v+'%'}}
+          }
+        },
+        plugins:[{
+          id:'goalLineDailyTeam',
+          afterDraw(chart){
+            const {ctx, chartArea, scales} = chart;
+            const y = scales.y.getPixelForValue(state.goal);
+            ctx.save();
+            ctx.strokeStyle = '#E3A63D';
+            ctx.setLineDash([4,4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(chartArea.left, y);
+            ctx.lineTo(chartArea.right, y);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }, barLabelPlugin]
+      });
+    }
+
+    const cumTeamCtx = document.getElementById('cum-chart-team');
+    if(chartCumTeam){ chartCumTeam.destroy(); chartCumTeam = null; }
+    if(cumTeamCtx) chartCumTeam = buildCumChart(cumTeamCtx, dailyTeam, gridColor, tickColor);
+
+    const rankedClients = clientRanking(monthRecords, 10);
+    const clientChartCtx = document.getElementById('client-rank-chart');
+    if(clientChartCtx){
+      if(chartClientRank) chartClientRank.destroy();
+      chartClientRank = new Chart(clientChartCtx, {
+        type:'bar',
+        data:{
+          labels: rankedClients.map(c=>c.nome),
+          datasets:[{
+            label:'Nº de cobranças',
+            data: rankedClients.map(c=>c.appearances),
+            backgroundColor:'#E3A63D',
+            borderRadius:4,
+            maxBarThickness:24
+          }]
+        },
+        options:{
+          indexAxis:'y',
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{right:36}},
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:(ctx)=>`${ctx.parsed.x} cobrança(s)`}}
+          },
+          scales:{
+            x:{beginAtZero:true,grid:{color:gridColor},ticks:{color:tickColor,precision:0}},
+            y:{grid:{display:false},ticks:{color:'#EDEFEA'}}
+          }
+        },
+        plugins:[countLabelPlugin]
+      });
+    }
+  }
+
+  if(state.view==='individual' && state.selectedPerson){
+    const months = monthsAvailable(state.records);
+    const trend = months.map(m=> statsFor(state.records.filter(r=>r.mes===m && r.responsavel===state.selectedPerson)));
+    const lineCtx = document.getElementById('line-chart-ind');
+    if(lineCtx){
+      if(chartLineInd) chartLineInd.destroy();
+      chartLineInd = new Chart(lineCtx, {
+        type:'line',
+        data:{
+          labels: months.map(mesLabelFromKey),
+          datasets:[
+            {
+              label: state.selectedPerson,
+              data: trend.map(t=>Number(t.rate.toFixed(1))),
+              borderColor:'#4FB6A8',
+              backgroundColor:'rgba(79,182,168,0.12)',
+              fill:true, tension:0.25, pointRadius:4, pointBackgroundColor:'#4FB6A8'
+            },
+            {
+              label:'Meta',
+              data: months.map(()=>state.goal),
+              borderColor:'#9AA6A5',
+              borderDash:[5,5],
+              pointRadius:0,
+              fill:false
+            }
+          ]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{top:24}},
+          plugins:{
+            legend:{display:true, labels:{color:'#9AA6A5', usePointStyle:true, boxWidth:8}},
+            tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.y}%`}}
+          },
+          scales:{
+            x:{grid:{display:false},ticks:{color:tickColor}},
+            y:{min:0,max:100,grid:{color:gridColor},ticks:{color:tickColor,callback:v=>v+'%'}}
+          }
+        },
+        plugins:[lineLabelPlugin]
+      });
+    }
+
+    const daily = dailyStatsForPerson(state.selectedPerson, state.selectedMonth);
+    const cumIndCtx = document.getElementById('cum-chart-ind');
+    if(chartCumInd){ chartCumInd.destroy(); chartCumInd = null; }
+    if(cumIndCtx) chartCumInd = buildCumChart(cumIndCtx, daily, gridColor, tickColor);
+    const dailyCtx = document.getElementById('daily-chart-ind');
+    if(dailyCtx){
+      if(chartDailyInd) chartDailyInd.destroy();
+      chartDailyInd = new Chart(dailyCtx, {
+        type:'bar',
+        data:{
+          labels: daily.map(d=>d.day),
+          datasets:[{
+            label:'Taxa diária',
+            data: daily.map(d=>Number(d.rate.toFixed(1))),
+            backgroundColor: daily.map(d=> d.rate>=state.goal ? '#4FB6A8' : '#D9694F'),
+            borderRadius:4,
+            maxBarThickness:22
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          layout:{padding:{top:24}},
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{
+              label:(ctx)=>`${ctx.parsed.y}% (${daily[ctx.dataIndex].pagos}/${daily[ctx.dataIndex].total})`
+            }}
+          },
+          scales:{
+            x:{grid:{display:false},ticks:{color:tickColor}},
+            y:{min:0,max:100,grid:{color:gridColor},ticks:{color:tickColor,callback:v=>v+'%'}}
+          }
+        },
+        plugins:[{
+          id:'goalLineDaily',
+          afterDraw(chart){
+            const {ctx, chartArea, scales} = chart;
+            const y = scales.y.getPixelForValue(state.goal);
+            ctx.save();
+            ctx.strokeStyle = '#E3A63D';
+            ctx.setLineDash([4,4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(chartArea.left, y);
+            ctx.lineTo(chartArea.right, y);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }, barLabelPlugin]
+      });
+    }
+  }
+}
+
+function attachEvents(){
+  const bind = (id, ev, fn)=>{ const el = document.getElementById(id); if(el) el.addEventListener(ev, fn); };
+  bind('pick-base-btn','click', escolherBase);
+  bind('reload-base-btn','click', relerBase);
+  bind('pick-baixa-btn','click', ()=>document.getElementById('baixa-input').click());
+  bind('base-input','change', (e)=>{ if(e.target.files[0]){ state.baseHandle=null; dbSet('baseHandle', null); carregarBase(e.target.files[0]); } });
+  bind('baixa-input','change', (e)=>carregarBaixas(e.target.files));
+  const dzBase = document.getElementById('dz-base'), dzBaixa = document.getElementById('dz-baixa');
+  [dzBase, dzBaixa].filter(Boolean).forEach(dz=>{
+    if(!dz) return;
+    dz.addEventListener('dragover', (e)=>{ e.preventDefault(); dz.classList.add('drag'); });
+    dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+  });
+  if(dzBase) dzBase.addEventListener('drop', async (e)=>{
+    e.preventDefault(); dzBase.classList.remove('drag');
+    const item = e.dataTransfer.items && e.dataTransfer.items[0];
+    let h = null;
+    try{ if(item && item.getAsFileSystemHandle) h = await item.getAsFileSystemHandle(); }catch(_){}
+    if(h && h.kind==='file'){ state.baseHandle = h; dbSet('baseHandle', h); carregarBase(await h.getFile()); }
+    else if(e.dataTransfer.files[0]) carregarBase(e.dataTransfer.files[0]);
+  });
+  if(dzBaixa) dzBaixa.addEventListener('drop', (e)=>{ e.preventDefault(); dzBaixa.classList.remove('drag'); carregarBaixas(e.dataTransfer.files); });
+  document.querySelectorAll('[data-rm-dia]').forEach(b=> b.addEventListener('click', ()=>{
+    const d = b.dataset.rmDia;
+    if(confirm(`Remover as baixas de ${fmtBR(d)}?`)) removerDiaBaixa(d);
+  }));
+  const clearBtn = document.getElementById('clear-btn');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{ if(confirm('Isso apaga a base e todas as baixas salvas neste navegador. Continuar?')) clearData(); });
+
+  const monthSelect = document.getElementById('month-select');
+  if(monthSelect) monthSelect.addEventListener('change', (e)=>{ state.selectedMonth = e.target.value; render(); });
+
+  const dDe = document.getElementById('data-de'), dAte = document.getElementById('data-ate');
+  if(dDe) dDe.addEventListener('change', e=>{ state.dataDe = e.target.value; render(); });
+  if(dAte) dAte.addEventListener('change', e=>{ state.dataAte = e.target.value; render(); });
+  const dLimpar = document.getElementById('data-limpar');
+  if(dLimpar) dLimpar.addEventListener('click', ()=>{ state.dataDe=''; state.dataAte=''; render(); });
+  const cDate = document.getElementById('conv-date');
+  if(cDate) cDate.addEventListener('change', e=>{ if(e.target.value){ state.convDate = e.target.value; render(); } });
+  document.querySelectorAll('[data-conv-ir]').forEach(b=>b.addEventListener('click', ev=>{ ev.preventDefault(); if(!b.dataset.convIr) return; state.convDate = b.dataset.convIr; render(); }));
+  document.querySelectorAll('[data-conv-filtro]').forEach(b=>b.addEventListener('click', ()=>{ state.convFiltro = b.dataset.convFiltro; document.querySelectorAll('[data-conv-filtro]').forEach(x=>x.classList.toggle('active', x===b)); aplicarFiltroConv(); }));
+  document.querySelectorAll('[data-conv-pessoa]').forEach(b=>b.addEventListener('click', ()=>{ state.convPessoa = b.dataset.convPessoa; render(); }));
+  const cBusca = document.getElementById('conv-busca');
+  if(cBusca) cBusca.addEventListener('input', e=>{ state.convBusca = e.target.value; aplicarFiltroConv(); });
+  const cExp = document.getElementById('conv-export');
+  if(cExp) cExp.addEventListener('click', exportarListaDia);
+  aplicarFiltroConv();
+
+  document.querySelectorAll('[data-fer-pessoa]').forEach(b=>b.addEventListener('click', ()=>{ state.ferPessoa = b.dataset.ferPessoa; render(); }));
+  const fAdd = document.getElementById('fer-add');
+  if(fAdd) fAdd.addEventListener('click', ()=>{
+    const d = document.getElementById('fer-data').value, n = document.getElementById('fer-nome').value.trim();
+    if(!d) return;
+    const l = feriadosExtra().filter(x=>x.data!==d); l.push({ data:d, nome:n||'Feriado' }); salvarFeriadosExtra(l); render();
+  });
+  document.querySelectorAll('[data-fer-del]').forEach(b=>b.addEventListener('click', ()=>{ salvarFeriadosExtra(feriadosExtra().filter(x=>x.data!==b.dataset.ferDel)); render(); }));
+
+  const goalInput = document.getElementById('goal-input');
+  if(goalInput) goalInput.addEventListener('change', (e)=>updateGoal(e.target.value));
+
+  const optManual = document.getElementById('opt-manual');
+  if(optManual) optManual.addEventListener('change', (e)=>{ state.usarManual = e.target.checked; recompute(); salvar(); render(); });
+  const optDia = document.getElementById('opt-diarota');
+  if(optDia) optDia.addEventListener('change', (e)=>{ state.incluirDiaRota = e.target.checked; recompute(); salvar(); render(); });
+  const exportBtn = document.getElementById('export-btn');
+  if(exportBtn) exportBtn.addEventListener('click', exportarRota);
+  const convDate = document.getElementById('conv-date');
+  if(convDate) convDate.addEventListener('change', (e)=>{ state.convDate = e.target.value; render(); });
+
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.view = btn.dataset.view; render(); });
+  });
+  document.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.selectedPerson = btn.dataset.person; render(); });
+  });
+  document.querySelectorAll('[data-sort-col]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const col = th.dataset.sortCol;
+      if(state.clientSort.col === col){
+        state.clientSort.dir = state.clientSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.clientSort = { col, dir: col === 'nome' ? 'asc' : 'desc' };
+      }
+      render();
+    });
+  });
+}
+
+function render(){
+  const app = document.getElementById('app');
+  let html = renderHeader() + renderDropzone() + renderConferencia();
+
+  if(!state.records.length){
+    html += renderEmpty();
+  } else if(state.view === 'conversoes' || state.view === 'feriados'){
+    html += renderTabs();
+    html += state.view === 'feriados' ? renderFeriados() : renderConversoes();
+  } else {
+    const monthRecords = periodRecords(state.records, state.selectedMonth);
+    const overall = statsFor(monthRecords);
+    html += renderKpis(monthRecords, overall);
+    html += renderTabs();
+    html += state.view === 'equipe' ? renderEquipe() : renderIndividual();
+  }
+
+  try{ [chartBar,chartLine,chartDailyTeam,chartCumTeam,chartClientRank,chartLineInd,chartCumInd,chartDailyInd].forEach(c=>{ if(c) c.destroy(); }); chartBar=chartLine=chartDailyTeam=chartCumTeam=chartClientRank=chartLineInd=chartCumInd=chartDailyInd=null; }catch(e){}
+  app.innerHTML = html;
+  attachEvents();
+  drawCharts();
+}
+
+init();
+</script>
+</body>
+</html>
