@@ -23,7 +23,8 @@ function decode(id){
   // Carteiras e SLA guardam dados no navegador: cada usuário usa a sua própria chave (um login não enxerga o do outro)
   if(perfil){
     if(id==='sla') src=src.split("'slaClientesNovos_base_v1'").join("'slaClientesNovos_base_v1_"+perfil.id+"'");
-    if(id==='mesa') src=src.split("'altpreco_'").join("'altpreco_"+perfil.id+"_'");
+    if(id==='mesa'){ src=src.split("'altpreco_'").join("'altpreco_"+perfil.id+"_'");
+      src=src.replace("try{ localStorage.setItem('altpreco_"+perfil.id+"_' + k, JSON.stringify(v)); return true; }","try{ localStorage.setItem('altpreco_"+perfil.id+"_' + k, JSON.stringify(v)); try{ parent.glpMesaSalvar&&parent.glpMesaSalvar(k,v); }catch(_){} return true; }"); }
     if(id==='cart') src=src.split("'carteiraDB_v1'").join("'carteiraDB_v1_"+perfil.id+"'");
   }
   // só gestor/admin carrega arquivo; para os demais os botões de carregar somem
@@ -34,10 +35,63 @@ function decode(id){
   src=src.replace('<head>','<head><script>window.GLP_PODE='+pode+';document.documentElement.classList.toggle("sem-carga",!window.GLP_PODE);<\/script><style>'+css+mov+'<\/style>');
   return src;
 }
+/* ---------- Mesa de Preços compartilhada (pedidos, configurações e base ficam no Supabase) ---------- */
+let mesaPronta=false, mesaUlt=0, mesaPend={}, mesaTimer=null, mesaBase={};
+const MESA_K=['pedidos','cfg','base'];
+const lsK=k=>'altpreco_'+perfil.id+'_'+k;
+function lsGet(k){ try{ const v=localStorage.getItem(lsK(k)); return v?JSON.parse(v):null; }catch(_){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(lsK(k),JSON.stringify(v)); }catch(_){} }
+function mesclarPedidos(srv,loc,ant){
+  const m=new Map(), id=p=>p&&p.id;
+  (srv||[]).forEach(p=>m.set(id(p),p));
+  const antM=new Map((ant||[]).map(p=>[id(p),p])), locIds=new Set((loc||[]).map(id));
+  (loc||[]).forEach(p=>{ const a=antM.get(id(p)); if(!a||JSON.stringify(a)!==JSON.stringify(p)){ const q=Object.assign({},p,{_u:Date.now()}); const o=m.get(id(p)); if(!o||(o._u||0)<=q._u) m.set(id(p),q); } else if(!m.has(id(p))) m.set(id(p),p); });
+  (ant||[]).forEach(a=>{ if(!locIds.has(id(a))) m.delete(id(a)); });
+  return Array.from(m.values());
+}
+async function mesaSync(inicial){
+  try{
+    const r=await sb.from('mesa_estado').select('chave,valor,atualizado_em');
+    if(r.error) throw r.error;
+    const srv={}; (r.data||[]).forEach(x=>srv[x.chave]=x);
+    let mudou=false;
+    for(const k of MESA_K){
+      const x=srv[k], loc=lsGet(k);
+      if(x){
+        if(k==='pedidos'&&mesaBase.pedidos&&!inicial){ const pend=mesaPend.pedidos?mesclarPedidos(x.valor,loc,mesaBase.pedidos):x.valor; if(JSON.stringify(pend)!==JSON.stringify(loc)) mudou=true; lsSet(k,pend); mesaBase.pedidos=x.valor; }
+        else{ if(JSON.stringify(x.valor)!==JSON.stringify(loc)) mudou=true; lsSet(k,x.valor); mesaBase[k]=x.valor; }
+      } else if(loc!=null && (perfil.role==='admin'||perfil.role==='gestor'||k==='pedidos')){
+        await sb.from('mesa_estado').upsert({chave:k,valor:loc,atualizado_por:perfil.id,atualizado_em:new Date().toISOString()}); mesaBase[k]=loc;
+      }
+    }
+    mesaUlt=Date.now(); return mudou;
+  }catch(e){ console.warn('mesaSync',e); mesaUlt=Date.now(); return false; }
+}
+window.glpMesaSalvar=function(k,v){
+  if(!MESA_K.includes(k)||!perfil) return;
+  mesaPend[k]=v; clearTimeout(mesaTimer); mesaTimer=setTimeout(mesaEnviar,1200);
+};
+async function mesaEnviar(){
+  const pend=mesaPend; mesaPend={};
+  for(const k of Object.keys(pend)){
+    try{
+      let val=pend[k];
+      if(k==='pedidos'){
+        const r=await sb.from('mesa_estado').select('valor').eq('chave','pedidos').maybeSingle();
+        val=mesclarPedidos(r.data?r.data.valor:[],pend[k],mesaBase.pedidos||[]);
+        lsSet('pedidos',val);
+      }
+      const w=await sb.from('mesa_estado').upsert({chave:k,valor:val,atualizado_por:perfil.id,atualizado_em:new Date().toISOString()});
+      if(w.error) throw w.error; mesaBase[k]=val;
+    }catch(e){ console.warn('mesaEnviar',e); mesaPend[k]=pend[k]; }
+  }
+}
 function show(id){
   const interna=(id==='admin'||id==='dados'||id==='vazio');
   if(!interna && !permitidos.includes(id)) return;
   if(id==='admin' && !(perfil&&perfil.role==='admin')) return;
+  if(id==='mesa' && !interna && !frames[id] && !mesaPronta){ mesaPronta=true; mesaSync(true).finally(()=>show('mesa')); return; }
+  if(id==='mesa' && frames[id] && Date.now()-mesaUlt>45000) mesaSync(false).then(mu=>{ if(mu){ frames.mesa.srcdoc=decode('mesa'); } });
   if(!interna && !frames[id]){
     const f=document.createElement('iframe');
     f.title=PN[id];

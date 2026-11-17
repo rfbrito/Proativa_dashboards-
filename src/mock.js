@@ -20,13 +20,14 @@ function addUser(db,email,pw,nome){
 let handlers=[];
 function from(t){
   let f=[],ord=null,rg=null,single=false;
-  const b={select(){return b;},eq(c,v){f.push(r=>r[c]===v);return b;},order(c,o){ord=[c,(o&&o.ascending===false)?-1:1];return b;},range(a,z){rg=[a,z];return b;},
+  const b={upsert(row){ const db=load(); db.mesa=db.mesa||[]; const i=db.mesa.findIndex(x=>x.chave===row.chave); if(i>=0) db.mesa[i]=row; else db.mesa.push(row); save(db); return Promise.resolve({error:null}); },select(){return b;},eq(c,v){f.push(r=>r[c]===v);return b;},order(c,o){ord=[c,(o&&o.ascending===false)?-1:1];return b;},range(a,z){rg=[a,z];return b;},
     maybeSingle(){single=true;return b;},single(){single=true;return b;},
     then(res,rej){
       const db=load(); let rows;
       if(t==='profiles') rows=db.profiles.filter(p=>p.id===db.session||isAdmin(db));
       else if(t==='dados') rows=db.dados.filter(r=>visivelDados(db,r));
       else if(t==='dados_meta'){ const p=me(db); rows=db.meta.filter(m=>isAdmin(db)||(p&&p.ativo&&p.paineis.includes(m.painel))); }
+      else if(t==='mesa_estado') rows=(db.mesa||[]);
       else rows=[];
       rows=rows.filter(r=>f.every(x=>x(r)));
       if(ord) rows=rows.slice().sort((a,b)=>(a[ord[0]]>b[ord[0]]?1:a[ord[0]]<b[ord[0]]?-1:0)*ord[1]);

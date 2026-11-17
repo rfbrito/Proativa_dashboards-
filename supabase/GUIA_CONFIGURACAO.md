@@ -215,3 +215,8 @@ Para o histórico completo (comparativos com o mesmo mês do ano anterior e grá
 
 ## v30 — Relatório Comercial e painéis claros
 O painel "Base de Clientes" agora se chama **Relatório Comercial**, com duas abas: **Clientes** (consumo, receita e preço por cliente, busca e trajetória individual) e **Consultores** (totais por consultor, carteira, histórico e operação diária com D-1). A aba Retirados saiu da tela; as regras de retirada continuam valendo nos números. Todos os painéis (Recuperação, Hub, Abastecimento, Gerador, SLA, Carteiras e Mesa de Preços) passaram para o tema claro.
+
+## v38 — Mesa de Preços compartilhada
+1. Rode `07_liberar_mesa.sql` (libera o painel "mesa" para gestores) e depois `08_mesa_compartilhada.sql` (cria a tabela `mesa_estado`).
+2. Publique o HTML v38 e peça para todos saírem e entrarem de novo.
+3. Na primeira abertura, os pedidos que já existiam no navegador de quem abrir primeiro (admin/gestor) sobem para o banco; a partir daí todos com acesso veem os mesmos cards. Alterações simultâneas são mescladas por pedido (vale a edição mais recente).
