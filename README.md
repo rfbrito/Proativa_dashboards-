@@ -4,14 +4,14 @@ Painel multiusuário (shell + iframes) em HTML único, com Supabase (Auth + Post
 Perfis: admin, gestor, atendente, pendente. Abas do Relatório Comercial: Clientes (Base de Clientes), Carteira, Operação Diária, Base Mensal.
 
 ## Conteúdo
-- `Painel_de_Atendimento_v38.html` — build final (contém URL e chave **anon** do Supabase; protegida por RLS).
+- `Painel_de_Atendimento_v39.html` — build final (contém URL e chave **anon** do Supabase; protegida por RLS).
 - `supabase/` — SQLs `01` a `06` (rodar em ordem; `06_tudo_em_um.sql` cobre o painel `cli`) e guias de configuração.
 - `src/` — fontes: `cli.html` (visualizador), `app.js` (shell/importador), `build.py`, `lightify.py`, `mk_release.py` e testes.
 
 ## Configuração
 1. No Supabase, abra o SQL Editor e rode `supabase/01_schema.sql` … `06_tudo_em_um.sql`.
 2. Crie o primeiro usuário, cadastre-se no painel e promova-o a `admin` na tabela `profiles`.
-3. Publique `Painel_de_Atendimento_v38.html` no Netlify (arrastar e soltar ou via repositório).
+3. Publique `Painel_de_Atendimento_v39.html` no Netlify (arrastar e soltar ou via repositório).
 4. Entre como admin, abra a Central de importação e envie as planilhas (vendas, relatório, Bases_Infos, carteiras).
 
 Detalhes em `supabase/GUIA_CONFIGURACAO.md` e `supabase/GUIA_ROTA_AUTOMATICA.md`.
