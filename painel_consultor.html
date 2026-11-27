@@ -541,6 +541,8 @@ nav.tabs a.on {box-shadow:none;background:var(--green-soft);}
    NUNCA use a chave service_role/secret. */
 const CFG = window.PAINEL_CONFIG || {};
 const SUPABASE_URL = String(CFG.url || "").trim();
+/* somenteDemo: true no config.js = o link mostra só dados fictícios, sem login e sem ler o banco (ex.: enquanto aguarda aprovação) */
+const SO_DEMO = CFG.somenteDemo === true;
 const SUPABASE_ANON_KEY = String(CFG.key || "").trim();
 /* ======================================================== */
 
@@ -564,7 +566,7 @@ try { unidade = localStorage.getItem("painel-unid") || "kg"; } catch (e) {}
 
 /* ---------- Supabase ---------- */
 const configurado = SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 20;
-if (configurado && window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (configurado && window.supabase && !SO_DEMO) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const traduz = e => {
   const m = String((e && (e.message || e.error_description)) || e || "");
@@ -916,7 +918,7 @@ function iniciar(aviso) {
   $("greet").textContent = h < 12 ? "Bom dia," : h < 18 ? "Boa tarde," : "Boa noite,";
   $("name").textContent = P.nome;
   $("avatar").textContent = iniciais(P.nome);
-  $("avisos").innerHTML = (demo ? '<div class="aviso">Demonstração com dados fictícios. Entre com seu login para ver a sua carteira.</div>' : "") + (aviso ? `<div class="aviso">${esc(aviso)}</div>` : "");
+  $("avisos").innerHTML = (demo ? `<div class="aviso">Demonstração com dados fictícios.${SO_DEMO ? "" : " Entre com seu login para ver a sua carteira."}</div>` : "") + (aviso ? `<div class="aviso">${esc(aviso)}</div>` : "");
   mostrar("app");
   render();
 }
@@ -1398,6 +1400,11 @@ function gerarDemo() {
 /* ---------- início ---------- */
 (async () => {
   setModo("entrar");
+  if (SO_DEMO) {
+    try { Object.keys(localStorage).filter(k => k === "painel-cache" || k.startsWith("sb-")).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    $("bSair").hidden = true;
+    demo = true; BASE = gerarDemo(); return iniciar();
+  }
   if (sb) {
     if (/type=recovery/.test(location.hash)) { mostrar("login"); return setModo("nova"); }
     const s = (await sb.auth.getSession()).data.session;
