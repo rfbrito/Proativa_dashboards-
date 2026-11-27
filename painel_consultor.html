@@ -258,12 +258,31 @@ nav.tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2
     </div>
   </section>
 
-  <section id="tanques">
+  <section id="precos">
     <div class="panel">
-      <h2>Tanques parados há 3 anos</h2>
-      <p class="find" id="tFind"></p>
-      <ul class="list" id="tList"></ul>
-      <button class="mais" id="tMais" type="button" hidden></button>
+      <h2>Preço médio</h2>
+      <p class="find" id="pFind"></p>
+      <div class="bars" id="pFx"></div>
+      <h3 class="sub">Clientes abaixo de R$ 6,00/kg</h3>
+      <ul class="list" id="pList"></ul>
+      <button class="mais" id="pMais" type="button" hidden></button>
+    </div>
+  </section>
+
+  <section id="tanques">
+    <div class="grid two">
+      <div class="panel">
+        <h2>Tanques parados há 3 anos</h2>
+        <p class="find" id="tFind"></p>
+        <ul class="list" id="tList"></ul>
+        <button class="mais" id="tMais" type="button" hidden></button>
+      </div>
+      <div class="panel">
+        <h2>Clientes donos do tanque</h2>
+        <p class="find" id="dFind"></p>
+        <ul class="list" id="dList"></ul>
+        <button class="mais" id="dMais" type="button" hidden></button>
+      </div>
     </div>
   </section>
 
@@ -290,6 +309,7 @@ nav.tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2
   <a href="#inicio" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</a>
   <a href="#clientes"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3 3 0 0 1 0 6M18 14c2 .7 3 2.6 3 6"/></svg>Clientes</a>
   <a href="#alertas"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18v.5"/></svg>Alertas</a>
+  <a href="#precos"><svg viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="8" cy="8" r="1.5"/></svg>Preços</a>
   <a href="#tanques"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="15" rx="5"/><path d="M10 3h4v3h-4z"/></svg>Tanques</a>
   <a href="#ranking" id="tabRank" hidden><svg viewBox="0 0 24 24"><path d="M8 21V11M12 21V5M16 21v-7M4 21h16"/></svg>Ranking</a>
 </nav>
@@ -584,9 +604,15 @@ async function publicar(pac, av) {
   };
   const cad = rows => primeira ? rows.map(r => Object.assign({}, r, { cadastrado_em: null })) : rows;
   const dividir = rows => [rows.filter(r => r.consultor), rows.filter(r => !r.consultor).map(r => { const x = Object.assign({}, r); delete x.consultor; return x; })];
+  if (pac.cliBase.length) {
+    /* nomes da venda diária só preenchem quem ainda está sem nome */
+    const semNome = primeira ? null : new Set((await todas(() => sb.from("clientes").select("codigo").is("nome", null).order("codigo"))).map(r => r.codigo));
+    await ups(cad(pac.cliBase), { ignoreDuplicates: true }, "Clientes novos da venda");
+    const nomes = pac.cliBase.filter(r => r.nome && semNome && semNome.has(r.codigo)).map(r => ({ codigo: r.codigo, nome: r.nome }));
+    if (nomes.length) await ups(nomes, {}, "Nomes dos clientes");
+  }
   for (const lista of dividir(pac.cliRel)) await ups(cad(lista), {}, "Clientes do relatório");
   for (const lista of dividir(pac.cliCart)) await ups(cad(lista), {}, "Carteiras");
-  if (pac.cliBase.length) await ups(cad(pac.cliBase), { ignoreDuplicates: true }, "Clientes novos da venda");
   if (pac.vendas.length) {
     av("Substituindo as vendas do período do arquivo…");
     await ck(sb.from("vendas").delete().gte("emissao", pac.de).lte("emissao", pac.ate));
@@ -603,7 +629,7 @@ async function publicar(pac, av) {
 function aplicarLocal(pac) {
   const cli = new Map();
   const junta = r => { const o = cli.get(r.codigo) || { codigo: r.codigo }; Object.keys(r).forEach(k => { if (r[k] != null && r[k] !== "") o[k] = r[k]; }); cli.set(r.codigo, o); };
-  pac.cliRel.forEach(junta); pac.cliCart.forEach(junta); pac.cliBase.forEach(r => { if (!cli.has(r.codigo)) junta(r); });
+  pac.cliRel.forEach(junta); pac.cliCart.forEach(junta); pac.cliBase.forEach(r => { const o = cli.get(r.codigo); if (!o) junta(r); else if (!o.nome && r.nome) o.nome = r.nome; });
   const vm = new Map(), vd = new Map();
   pac.vendas.forEach(v => {
     const km = v.cliente + "|" + v.emissao.slice(0, 7); let a = vm.get(km); if (!a) { a = { cliente: v.cliente, mes: v.emissao.slice(0, 7), kg: 0, valor: 0, nfs: new Set(), ultima: "" }; vm.set(km, a); }
@@ -694,6 +720,7 @@ function uteis(ym) {
   return out;
 }
 /* Clientes donos do próprio tanque (lista da aba Carteiras, 26/11/2026). Não entram em "tanques parados". */
+const LIM_PRECO = 6; /* R$/kg: abaixo disso o cliente aparece na lista de preço baixo */
 const TANQUE_CLIENTE = new Set(["000915","000939","000974","001084","001128","001431","001636","000875","000885","000892","000922","001656","001280","001303","001878","001982"]);
 const ant0 = ym => ymAnt(ym);
 const ymAnt = ym => { const [y, m] = ym.split("-").map(Number); return m === 1 ? (y - 1) + "-12" : y + "-" + String(m - 1).padStart(2, "0"); };
@@ -754,6 +781,18 @@ function calcular() {
   const tanqueDoCliente = r => TANQUE_CLIENTE.has(r[0]) || /CLIENTE|PR[OÓ]PRI/i.test(String(r[15] || ""));
   const tanques = cadC.filter(r => { const u = ultCompra(r); return u && u < corte && !tanqueDoCliente(r); })
     .map(r => ({ r, u: ultCompra(r) })).sort((a, b) => a.u < b.u ? -1 : 1);
+  const donos = cadC.filter(tanqueDoCliente).map(r => ({ r, u: ultCompra(r), kg: doYm(r[0], ym), antKg: doYm(r[0], ant0(ym)) }))
+    .sort((a, b) => (b.kg - a.kg) || (b.antKg - a.antKg) || (a.u < b.u ? 1 : -1));
+  /* preço praticado por cliente: mês atual; quem ainda não comprou no mês entra com o preço do mês anterior */
+  const precoDe = cod => {
+    const x = mesC.get(cod); if (!x) return null;
+    for (const m of [ym, ant0(ym)]) { const e = (x[2] || []).find(v => v[0] === m); if (e && +e[1] > 0 && +e[2] > 0) return { m, kg: +e[1], rs: +e[2], p: +e[2] / +e[1] }; }
+    return null;
+  };
+  const precos = cadC.map(r => ({ r, x: precoDe(r[0]) })).filter(o => o.x);
+  const baixo = precos.filter(o => o.x.p < LIM_PRECO).sort((a, b) => a.x.p - b.x.p);
+  const FX = [[0, 5.5, "Abaixo de R$ 5,50"], [5.5, LIM_PRECO, "R$ 5,50 a 5,99"], [LIM_PRECO, 7, "R$ 6,00 a 6,99"], [7, 8, "R$ 7,00 a 7,99"], [8, 1e9, "R$ 8,00 ou mais"]]
+    .map(([a, b, l]) => { const g = precos.filter(o => o.x.p >= a && o.x.p < b); return { l, n: g.length, kg: g.reduce((t, o) => t + o.x.kg, 0) }; });
   const rc = par.rec || [30, 60, 90];
   const faixas = [`Até ${rc[0]} dias`, `${rc[0] + 1} a ${rc[1]} dias`, `${rc[1] + 1} a ${rc[2]} dias`, `Mais de ${rc[2]}`, "Sem compra"].map(l => ({ l, n: 0 }));
   cadC.filter(ativo).forEach(r => {
@@ -765,7 +804,7 @@ function calcular() {
   });
   /* ranking por consultor */
   const rk = {};
-  dia.forEach(r => { if (String(r[0]).startsWith(ym) && r[1] && r[1] !== "(sem carteira)") rk[r[1]] = (rk[r[1]] || 0) + (+r[k] || 0); });
+  if (BASE.perfil.role === "gestor" || BASE.perfil.role === "admin") dia.forEach(r => { if (String(r[0]).startsWith(ym) && r[1] && r[1] !== "(sem carteira)") rk[r[1]] = (rk[r[1]] || 0) + (+r[k] || 0); });
   /* contratos (planner) */
   const hojeIso = new Date().toISOString().slice(0, 10);
   const ctrC = (BASE.ctr || []).filter(r => sel === "*" || r[12] === sel);
@@ -782,7 +821,7 @@ function calcular() {
   const etList = Object.keys(etapas).sort((a, b) => { const ia = ORD.indexOf(a), ib = ORD.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); }).map(k => Object.assign({ et: k }, etapas[k]));
   abertos.sort((a, b) => (b.late - a.late) || (b.dd - a.dd));
   const ctr = { tem: (BASE.ctr || []).length > 0, abMes, abAnt, abertos, etList, canc: ctrC.filter(r => ehCanc(r) && String(r[7]).startsWith(ym)).length };
-  return { ym, ultima, U, passados, restantes, acum, kg, rs, nf, antKg, antRs, real, meta, antV, proj, cadC, comCompra, novos, aguardando, semMes, tanques, faixas, rk, par, ctr };
+  return { ym, ultima, U, passados, restantes, acum, kg, rs, nf, antKg, antRs, real, meta, antV, proj, cadC, comCompra, novos, aguardando, semMes, tanques, donos, precos, baixo, FX, faixas, rk, par, ctr };
 }
 
 /* ---------- desenho ---------- */
@@ -791,7 +830,7 @@ const fmtU = v => unidade === "kg" ? nBR(v) + " kg" : brl(v);
 const fmtC = v => unidade === "kg" ? curto(v) + " kg" : "R$ " + curto(v);
 let feitos = {};
 try { feitos = JSON.parse(localStorage.getItem("painel-contatos") || "{}"); } catch (e) {}
-let verN = 6, verA = 8, verT = 6, verC = 6;
+let verN = 6, verA = 8, verT = 6, verC = 6, verP = 8, verD = 6;
 
 function render() {
   C = calcular();
@@ -857,7 +896,7 @@ function render() {
     const dd = desde ? dias(desde, C.ultima) : null;
     const dir = esp ? `<span class="tag w">aguardando${dd != null ? " há " + dd + (dd === 1 ? " dia" : " dias") : ""}</span><small>${desde ? "cadastro " + esc(dBR(desde)) : "sem data"}</small>`
                     : `${mes.kg ? esc(curto(mes.kg)) + " kg" : '<span class="tag">sem compra no mês</span>'}<small>1ª compra ${esc(dBR(desde))}</small>`;
-    return `<li><div><strong>${esc(cap(r[3] || r[1]))}</strong><span class="s">${esc(cap(r[6]))}${r[5] ? "/" + esc(r[5]) : ""} · cód. ${esc(r[0])}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${dir}</div></li>`;
+    return `<li><div><strong>${esc(cap(r[3] || r[1]))}</strong><span class="s">${r[6] ? esc(cap(r[6])) + (r[5] ? "/" + esc(r[5]) : "") + " · " : ""}cód. ${esc(r[0])}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${dir}</div></li>`;
   }).join("") || '<li class="vazio">Quando um cliente novo entrar na carteira, ele aparece aqui.</li>';
   $("nMais").hidden = N.length <= verN; $("nMais").textContent = `Ver todos (${N.length})`;
 
@@ -880,8 +919,23 @@ function render() {
   /* tanques parados */
   const T = C.tanques;
   $("tFind").innerHTML = T.length ? `<strong>${T.length}</strong> ${T.length === 1 ? "cliente está" : "clientes estão"} há mais de 3 anos sem consumo com tanque da GLP. Peça o recolhimento para não perder comissão.` : "Nenhum tanque parado há mais de 3 anos.";
-  $("tList").innerHTML = T.slice(0, verT).map(({ r, u }) => { const an = dias(u, C.ultima) / 365.25; return `<li><div><strong>${esc(cap(r[3] || r[1]))}</strong><span class="s">${esc(cap(r[6]))}${r[5] ? "/" + esc(r[5]) : ""} · cód. ${esc(r[0])}${r[2] ? " · " + esc(cap(r[2])) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r"><span class="tag w">${nBR(an, 1)} anos</span><small>última ${esc(dBR(u))}/${esc(u.slice(2, 4))}</small></div></li>`; }).join("");
+  $("tList").innerHTML = T.slice(0, verT).map(({ r, u }) => { const an = dias(u, C.ultima) / 365.25; return `<li><div><strong>${esc(cap(r[3] || r[1]))}</strong><span class="s">${r[6] ? esc(cap(r[6])) + (r[5] ? "/" + esc(r[5]) : "") + " · " : ""}cód. ${esc(r[0])}${r[2] ? " · " + esc(cap(r[2])) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r"><span class="tag w">${nBR(an, 1)} anos</span><small>última ${esc(dBR(u))}/${esc(u.slice(2, 4))}</small></div></li>`; }).join("");
   $("tMais").hidden = T.length <= verT; $("tMais").textContent = `Ver todos (${T.length})`;
+
+  /* donos do tanque */
+  const D = C.donos, dSem = D.filter(o => !o.kg).length;
+  $("dFind").innerHTML = D.length ? `<strong>${D.length}</strong> ${D.length === 1 ? "cliente tem" : "clientes têm"} tanque próprio${dSem ? `, ${dSem} sem compra em ${MESES[+C.ym.slice(5) - 1]}` : ""}. O tanque não é da GLP: não entra no recolhimento, e o cliente pode comprar de outra distribuidora.` : "Nenhum cliente com tanque próprio nesta carteira.";
+  $("dList").innerHTML = D.slice(0, verD).map(({ r, u, kg, antKg }) => `<li><div><strong>${esc(cap(r[3] || r[1]))}</strong><span class="s">${r[6] ? esc(cap(r[6])) + (r[5] ? "/" + esc(r[5]) : "") + " · " : ""}cód. ${esc(r[0])}${u ? " · última " + esc(dBR(u)) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${kg ? esc(curto(kg)) + " kg" : '<span class="tag w">sem compra</span>'}<small>${kg ? "no mês" : antKg ? esc(curto(antKg)) + " kg mês ant." : "no mês"}</small></div></li>`).join("");
+  $("dMais").hidden = D.length <= verD; $("dMais").textContent = `Ver todos (${D.length})`;
+
+  /* preço médio */
+  const pmM = C.kg ? C.rs / C.kg : 0, pmA = C.antKg ? C.antRs / C.antKg : 0, B = C.baixo, kgB = B.reduce((t, o) => t + o.x.kg, 0);
+  $("pFind").innerHTML = (pmM ? `Preço médio em ${MESES[+C.ym.slice(5) - 1]}: <strong>R$ ${nBR(pmM, 2)}/kg</strong>${pmA ? ` (R$ ${nBR(pmA, 2)} no mesmo período do mês anterior)` : ""}. ` : "Ainda não há vendas neste mês. ")
+    + (B.length ? `<strong>${B.length}</strong> ${B.length === 1 ? "cliente comprou" : "clientes compraram"} abaixo de R$ ${nBR(LIM_PRECO, 2)}/kg (${esc(curto(kgB))} kg).` : `Nenhum cliente abaixo de R$ ${nBR(LIM_PRECO, 2)}/kg.`);
+  const maxP = Math.max(1, ...C.FX.map(f => f.n));
+  $("pFx").innerHTML = C.FX.map((f, i) => `<div class="fr${i < 2 ? " late" : ""}"><span>${esc(f.l)}<span class="who2">${esc(curto(f.kg))} kg</span></span><div class="bar"><i style="width:${(f.n / maxP * 100).toFixed(1)}%"></i></div><span class="v">${f.n}</span></div>`).join("");
+  $("pList").innerHTML = B.slice(0, verP).map(({ r, x }) => `<li><div><strong>${esc(cap(r[3] || r[1]))}</strong><span class="s">${esc(curto(x.kg))} kg em ${esc(MESES[+x.m.slice(5) - 1])}${+r[12] ? " · tabela R$ " + nBR(+r[12], 2) : ""} · cód. ${esc(r[0])}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r"><span class="tag w">R$ ${nBR(x.p, 2)}</span><small>por kg</small></div></li>`).join("") || '<li class="vazio">Nenhum cliente abaixo de R$ 6,00/kg.</li>';
+  $("pMais").hidden = B.length <= verP; $("pMais").textContent = `Ver todos (${B.length})`;
 
   /* ranking */
   const R = Object.entries(C.rk).sort((a, b) => b[1] - a[1]), maxR = R.length ? R[0][1] : 1;
@@ -894,6 +948,8 @@ function render() {
 $("nMais").addEventListener("click", () => { verN = 9999; render(); });
 $("aMais").addEventListener("click", () => { verA = 9999; render(); });
 $("tMais").addEventListener("click", () => { verT = 9999; render(); });
+$("dMais").addEventListener("click", () => { verD = 9999; render(); });
+$("pMais").addEventListener("click", () => { verP = 9999; render(); });
 $("ctrMais").addEventListener("click", () => { verC = 9999; render(); });
 $("aList").addEventListener("click", e => {
   const b = e.target.closest(".chk"); if (!b) return;
@@ -935,7 +991,7 @@ const tabs = [...document.querySelectorAll("nav.tabs a")];
 const io = new IntersectionObserver(es => es.forEach(en => {
   if (en.isIntersecting) tabs.forEach(t => t.classList.toggle("on", t.getAttribute("href") === "#" + en.target.id));
 }), { rootMargin: "-40% 0px -55% 0px" });
-["inicio", "clientes", "alertas", "tanques", "ranking"].forEach(id => io.observe($(id)));
+["inicio", "clientes", "alertas", "precos", "tanques", "ranking"].forEach(id => io.observe($(id)));
 
 /* offline */
 const sinal = () => document.body.classList.toggle("off", !navigator.onLine);
@@ -956,7 +1012,7 @@ function gerarDemo() {
   cons.forEach((c, ci) => {
     for (let j = 0; j < 24; j++) {
       const cod = String(++id).padStart(6, "0"), nm = nomes[(ci * 7 + j) % nomes.length] + (j >= nomes.length ? " 2" : ""), cid = cidades[(ci + j) % 5];
-      const base = Math.round(300 + rnd() * 2600), preco = +(6.2 + rnd() * 1.6).toFixed(2);
+      const base = Math.round(300 + rnd() * 2600), preco = +(5.3 + rnd() * 2.9).toFixed(2);
       const espera = j === 0 && ci < 4, velho = j >= 21 && ci % 2 === 0;
       const novo = !espera && j < 2 + (ci % 2), parado = !novo && !espera && !velho && rnd() < .22, sumido = !novo && !parado && !espera && !velho && rnd() < .08;
       const primeira = espera ? "" : novo ? iso(new Date(ult - (10 + rnd() * 70) * 864e5)) : "2019-0" + (1 + j % 9) + "-15";
@@ -973,7 +1029,7 @@ function gerarDemo() {
       if (uc > ultima) uc = ultima;
       if (parado) uc = meses[4] + "-" + String(3 + Math.floor(rnd() * 24)).padStart(2, "0");
       if (velho) uc = (2021 + (j % 2)) + "-0" + (2 + j % 7) + "-1" + (j % 9);
-      cad.push([cod, nm.toUpperCase(), "", nm, "", cid[1], cid[0].toUpperCase(), "", c, "Ativo", primeira, uc, preco, sumido || velho ? 0 : base, sumido || velho ? 0 : +(base * preco).toFixed(2), "GLP", "01", "", c, 0, 0, ["28 DDL", "À vista", "14 DDL"][j % 3], "", espera ? iso(new Date(ult - (3 + ci * 6) * 864e5)) : ""]);
+      cad.push([cod, nm.toUpperCase(), "", nm, "", cid[1], cid[0].toUpperCase(), "", c, "Ativo", primeira, uc, preco, sumido || velho ? 0 : base, sumido || velho ? 0 : +(base * preco).toFixed(2), j % 9 === 4 ? "CLIENTE" : "GLP", "01", "", c, 0, 0, ["28 DDL", "À vista", "14 DDL"][j % 3], "", espera ? iso(new Date(ult - (3 + ci * 6) * 864e5)) : ""]);
       mes.push([cod, nm.toUpperCase(), hist, ["01"], uc]);
     }
   });
