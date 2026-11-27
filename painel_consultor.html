@@ -72,6 +72,11 @@ header.top{padding-block:calc(env(safe-area-inset-top,0px) + 16px) 12px;display:
 .menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 16px;min-height:48px;cursor:pointer}
 .menu button+button{border-top:1px solid var(--line)}
 .selc{padding-bottom:12px}
+.filtros{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.filtros:has(#sel:not([hidden])){grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+.fdata{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;background:var(--card);min-height:46px;padding:0 12px}
+.fdata span{font-size:13px;color:var(--mute);white-space:nowrap}
+.fdata input{flex:1;min-width:0;border:0;background:transparent;font:600 15px Inter,sans-serif;color:var(--ink);padding:8px 0}
 .selc select{width:100%;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);min-height:46px}
 /* faixa principal */
 .hero{background:var(--hero);color:#fff;padding-block:20px 22px}
@@ -190,8 +195,11 @@ nav.tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2
   <button id="bSair" type="button">Sair</button>
   <input type="file" id="fImp" accept=".xlsx,.xls,.json" multiple hidden>
 </div>
-<div class="wrap selc" id="selBox" hidden>
-  <select id="sel" aria-label="Consultor"></select>
+<div class="wrap selc">
+  <div class="filtros">
+    <label class="fdata"><span>Até</span><input type="date" id="dRef" aria-label="Data de referência"></label>
+    <select id="sel" aria-label="Consultor" hidden></select>
+  </div>
 </div>
 
 <div class="hero">
@@ -210,6 +218,14 @@ nav.tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2
 <main class="wrap">
   <div id="avisos"></div>
   <section id="inicio">
+    <div class="panel" id="diaBox" style="margin-bottom:22px">
+      <h2 id="dTit">Venda do dia</h2>
+      <p class="find" id="dFind2"></p>
+      <div class="kpis k4" id="diaKpi"></div>
+      <h3 class="sub">Clientes que compraram no dia</h3>
+      <ul class="list" id="diaList"></ul>
+      <button class="mais" id="diaMais" type="button" hidden></button>
+    </div>
     <div class="grid two">
       <div class="panel">
         <h2>Ritmo do mês</h2>
@@ -336,7 +352,7 @@ const PAR_DEF = { rec: [30, 60, 90], novos_dias: 90, meta_kg: 0, meta_rs: 0 };
 const cap = s => String(s || "").toLowerCase().replace(/(^|\s)\S/g, x => x.toUpperCase());
 
 let sb = null, perfil = null, BASE = null, demo = false;
-let unidade = "kg", sel = "*";
+let unidade = "kg", sel = "*", dataRef = null;
 try { unidade = localStorage.getItem("painel-unid") || "kg"; } catch (e) {}
 
 /* ---------- Supabase ---------- */
@@ -380,6 +396,7 @@ function montarBase(cli, vm, vd, ct, perfilB) {
 }
 
 async function carregar() {
+  cacheDia.clear();
   mostrar("load");
   try {
     const u = (await sb.auth.getUser()).data.user;
@@ -631,6 +648,7 @@ function aplicarLocal(pac) {
   });
   const fix = o => Object.assign(o, { nfs: o.nfs.size });
   if (cli.size || vm.size) BASE = montarBase([...cli.values()], [...vm.values()].map(fix), [...vd.values()].map(fix).sort((a, b) => a.emissao < b.emissao ? -1 : 1), pac.contratos || [], BASE.perfil);
+  if (vm.size) BASE.vendas = pac.vendas;
   else if (pac.contratos) BASE.ctr = montarBase([], [], [], pac.contratos, BASE.perfil).ctr;
 }
 
@@ -678,7 +696,7 @@ $("bUsu").addEventListener("click", () => { $("menu").hidden = true; $("usuarios
 function iniciar(aviso) {
   const P = BASE.perfil, gestor = P.role === "gestor" || P.role === "admin";
   const nomes = [...new Set(BASE.cad.map(r => r[8]).concat(BASE.dia.map(r => r[1])).filter(n => n && n !== "(sem carteira)"))].sort();
-  $("selBox").hidden = !gestor || nomes.length < 2;
+  $("sel").hidden = !gestor || nomes.length < 2;
   $("sel").innerHTML = '<option value="*">Todos os consultores</option>' + nomes.map(n => `<option value="${esc(n)}">${esc(cap(n))}</option>`).join("");
   sel = gestor ? (nomes.includes(sel) ? sel : "*") : "*";
   $("sel").value = sel;
@@ -695,6 +713,7 @@ function iniciar(aviso) {
   render();
 }
 $("sel").addEventListener("change", e => { sel = e.target.value; render(); });
+$("dRef").addEventListener("change", e => { const v = e.target.value; if (v) { dataRef = v; render(); } });
 document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
   unidade = b.dataset.u;
   try { localStorage.setItem("painel-unid", unidade); } catch (e) {}
@@ -726,7 +745,7 @@ function calcular() {
   const cods = new Set(cadC.map(r => r[0]));
   const mesC = new Map(mes.filter(r => sel === "*" ? true : cods.has(r[0])).map(r => [r[0], r]));
   const diaC = dia.filter(r => filtro(r[1]));
-  const ultima = info.ultima || diaC.map(r => r[0]).sort().pop() || new Date().toISOString().slice(0, 10);
+  const ultima = dataRef || info.ultima || diaC.map(r => r[0]).sort().pop() || new Date().toISOString().slice(0, 10);
   const ym = ultima.slice(0, 7), dHoje = +ultima.slice(8, 10);
   const U = uteis(ym), passados = Math.max(U.filter(d => d <= dHoje).length, 1), restantes = U.length - passados;
   const k = unidade === "kg" ? 2 : 3;
@@ -755,8 +774,15 @@ function calcular() {
   const comCompra = cadC.filter(r => doMes(r[0]).kg > 0).length;
   const limNovo = new Date(new Date(ultima + "T12:00") - par.novos_dias * 864e5).toISOString().slice(0, 10);
   const jaComprou = r => !!(r[10] || ultCompra(r) || (mesC.get(r[0]) && (mesC.get(r[0])[2] || []).some(e => +e[1] > 0)));
-  const novos = cadC.filter(r => (r[10] && r[10] >= limNovo) || (r[23] && r[23] >= limNovo))
-    .map(r => { const esp = !jaComprou(r); return { r, esp, desde: esp ? r[23] : (r[10] || r[23]), mes: doMes(r[0]) }; })
+  /* sem a 1ª compra no cadastro, usa o 1º mês com venda — só se o cliente não comprava já no início dos dados */
+  const mes0 = BASE.mes.reduce((a, x) => { const e = (x[2] || []).find(v => +v[1] > 0); return e && (!a || e[0] < a) ? e[0] : a; }, "");
+  const primMes = cod => { const x = mesC.get(cod); const e = x && (x[2] || []).find(v => +v[1] > 0 && v[0] <= ym); return e ? e[0] : ""; };
+  const novos = cadC.map(r => {
+      if ((r[10] && r[10] >= limNovo && r[10] <= ultima) || (r[23] && r[23] >= limNovo && r[23] <= ultima)) { const esp = !jaComprou(r); return { r, esp, desde: esp ? r[23] : (r[10] || r[23]), mes: doMes(r[0]) }; }
+      const pm = !r[10] && primMes(r[0]);
+      if (pm && pm > mes0 && pm >= limNovo.slice(0, 7)) return { r, esp: false, desde: pm + "-01", aprox: true, mes: doMes(r[0]) };
+      return null;
+    }).filter(Boolean)
     .sort((a, b) => (b.esp - a.esp) || (a.desde < b.desde ? 1 : -1));
   const aguardando = novos.filter(x => x.esp);
   /* sem consumo no mês: comprou no mês anterior e ainda não comprou neste */
@@ -823,9 +849,16 @@ const fmtU = v => unidade === "kg" ? nBR(v) + " kg" : brl(v);
 const fmtC = v => unidade === "kg" ? curto(v) + " kg" : "R$ " + curto(v);
 let feitos = {};
 try { feitos = JSON.parse(localStorage.getItem("painel-contatos") || "{}"); } catch (e) {}
-let verN = 6, verA = 8, verT = 6, verC = 6, verP = 8, verD = 6;
+let verDia = 8, verN = 6, verA = 8, verT = 6, verC = 6, verP = 8, verD = 6;
 
+function ajustarData() {
+  const ult = BASE.info.ultima, pri = BASE.dia.reduce((a, r) => !a || r[0] < a ? r[0] : a, "");
+  $("dRef").max = ult || ""; $("dRef").min = pri || "";
+  if (!dataRef || !ult || dataRef > ult || (pri && dataRef < pri)) dataRef = ult || null;
+  $("dRef").value = dataRef || "";
+}
 function render() {
+  ajustarData();
   C = calcular();
   document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.u === unidade)));
   const mesNome = MESES[+C.ym.slice(5) - 1] + " " + C.ym.slice(0, 4);
@@ -861,6 +894,9 @@ function render() {
     { l: "Não consumiram", v: nBR(S.sem), x: `<em class="down">${pc(S.sem)}</em>` }
   ].map(k => `<div class="kpi"><span>${esc(k.l)}</span><div class="num">${esc(k.v)}</div>${k.x}</div>`).join("");
 
+  /* venda do dia (D-1 ou a data escolhida) */
+  vendaDoDia();
+
   /* gráfico */
   $("cFind").innerHTML = !C.real ? "Ainda não há vendas neste mês." : C.meta
     ? (C.proj >= C.meta ? `No ritmo atual o mês fecha em <strong>${esc(fmtU(C.proj))}</strong> e passa do previsto.` : `No ritmo atual o mês fecha em <strong>${esc(fmtU(C.proj))}</strong>, ${pct(C.proj / C.meta)} do previsto.`)
@@ -892,10 +928,10 @@ function render() {
   /* clientes novos e 1º abastecimento */
   const N = C.novos, AG = C.aguardando;
   $("nFind").innerHTML = (AG.length ? `<strong>${AG.length}</strong> ${AG.length === 1 ? "cliente novo aguarda" : "clientes novos aguardam"} o 1º abastecimento. ` : "") + (N.length - AG.length ? `${N.length - AG.length} já ${N.length - AG.length === 1 ? "começou" : "começaram"} a comprar nos últimos ${C.par.novos_dias} dias.` : (AG.length ? "" : `Nenhum cliente novo nos últimos ${C.par.novos_dias} dias.`));
-  $("nList").innerHTML = N.slice(0, verN).map(({ r, esp, desde, mes }) => {
+  $("nList").innerHTML = N.slice(0, verN).map(({ r, esp, desde, mes, aprox }) => {
     const dd = desde ? dias(desde, C.ultima) : null;
     const dir = esp ? `<span class="tag w">aguardando${dd != null ? " há " + dd + (dd === 1 ? " dia" : " dias") : ""}</span><small>${desde ? "cadastro " + esc(dBR(desde)) : "sem data"}</small>`
-                    : `${mes.kg ? esc(curto(mes.kg)) + " kg" : '<span class="tag">sem compra no mês</span>'}<small>1ª compra ${esc(dBR(desde))}</small>`;
+                    : `${mes.kg ? esc(curto(mes.kg)) + " kg" : '<span class="tag">sem compra no mês</span>'}<small>1ª compra ${aprox ? "em " + esc(MESES[+desde.slice(5, 7) - 1]) : esc(dBR(desde))}</small>`;
     return `<li><div><strong>${esc(nomeCli(r))}</strong><span class="s">${r[6] ? esc(cap(r[6])) + (r[5] ? "/" + esc(r[5]) : "") + " · " : ""}cód. ${esc(r[0])}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${dir}</div></li>`;
   }).join("") || '<li class="vazio">Quando um cliente novo entrar na carteira, ele aparece aqui.</li>';
   $("nMais").hidden = N.length <= verN; $("nMais").textContent = `Ver todos (${N.length})`;
@@ -941,6 +977,45 @@ function render() {
 }
 
 $("nMais").addEventListener("click", () => { verN = 9999; render(); });
+$("diaMais").addEventListener("click", () => { verDia = 9999; vendaDoDia(); });
+
+/* ---------- venda do dia ---------- */
+const cacheDia = new Map();
+async function linhasDoDia(d) {
+  if (BASE.vendas) return BASE.vendas.filter(v => v.emissao === d);
+  if (demo || !sb) return null;
+  if (!cacheDia.has(d)) cacheDia.set(d, todas(() => sb.from("vendas").select("cliente,kg,valor,consultor").eq("emissao", d).order("id")).catch(e => { cacheDia.delete(d); throw e; }));
+  return cacheDia.get(d);
+}
+let diaPedido = "";
+async function vendaDoDia() {
+  const d = C.ultima, filtro = c => sel === "*" || String(c || "").toUpperCase() === sel;
+  const w = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"][new Date(d + "T12:00").getDay()];
+  const ehD1 = d === BASE.info.ultima;
+  $("dTit").textContent = ehD1 ? "Venda do dia (D-1)" : "Venda do dia";
+  const soma = dt => BASE.dia.filter(r => r[0] === dt && filtro(r[1])).reduce((a, r) => (a.kg += +r[2] || 0, a.rs += +r[3] || 0, a), { kg: 0, rs: 0 });
+  const h = soma(d), d7 = new Date(new Date(d + "T12:00") - 7 * 864e5).toISOString().slice(0, 10), a = soma(d7);
+  const dl = (x, y) => { if (!y) return "<em>sem venda na semana anterior</em>"; const v = (x - y) / y; return `<em class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "▲" : "▼"} ${pct(Math.abs(v), 1)} vs ${w} anterior</em>`; };
+  $("dFind2").innerHTML = h.kg ? `${cap(w)}, ${esc(dBR(d))}/${d.slice(0, 4)}: <strong>${esc(nBR(h.kg))} kg</strong> vendidos.` : `Sem vendas em ${esc(dBR(d))}/${d.slice(0, 4)} (${w}). Escolha outra data no campo "Até", lá em cima.`;
+  const pmD = h.kg ? h.rs / h.kg : 0, pmA = a.kg ? a.rs / a.kg : 0;
+  $("diaKpi").innerHTML = [
+    { l: "Volume", v: curto(h.kg) + " kg", x: dl(h.kg, a.kg) },
+    { l: "Faturamento", v: "R$ " + curto(h.rs), x: dl(h.rs, a.rs) },
+    { l: "Preço médio", v: pmD ? "R$ " + nBR(pmD, 2) : "—", x: pmA ? `<em>R$ ${nBR(pmA, 2)} na ${w} anterior</em>` : "<em>&nbsp;</em>" },
+    { l: "Clientes atendidos", v: "…", x: "<em>no dia</em>" }
+  ].map((k, i) => `<div class="kpi"><span>${esc(k.l)}</span><div class="num"${i === 3 ? ' id="diaCli"' : ""}>${esc(k.v)}</div>${k.x}</div>`).join("");
+  diaPedido = d;
+  let linhas;
+  try { linhas = await linhasDoDia(d); } catch (e) { if (diaPedido === d) { $("diaList").innerHTML = `<li class="vazio">Não foi possível carregar: ${esc(traduz(e))}</li>`; $("diaCli").textContent = "—"; } return; }
+  if (diaPedido !== d) return;
+  if (!linhas) { $("diaList").innerHTML = '<li class="vazio">Na demonstração a lista por cliente aparece depois de importar a venda diária.</li>'; $("diaCli").textContent = "—"; $("diaMais").hidden = true; return; }
+  const cad = new Map(BASE.cad.map(r => [r[0], r])), ag = new Map();
+  linhas.filter(v => filtro(v.consultor)).forEach(v => { const x = ag.get(v.cliente) || { cod: v.cliente, kg: 0, rs: 0, cons: v.consultor }; x.kg += +v.kg || 0; x.rs += +v.valor || 0; ag.set(v.cliente, x); });
+  const L = [...ag.values()].sort((p, q) => q.kg - p.kg);
+  $("diaCli").textContent = nBR(L.length);
+  $("diaList").innerHTML = L.slice(0, verDia).map(x => { const r = cad.get(x.cod) || [x.cod]; return `<li><div><strong>${esc(nomeCli(r))}</strong><span class="s">cód. ${esc(x.cod)}${x.kg ? " · R$ " + nBR(x.rs / x.kg, 2) + "/kg" : ""}${sel === "*" && x.cons ? " · " + esc(cap(x.cons)) : ""}</span></div><div class="r">${esc(nBR(x.kg))} kg<small>R$ ${esc(curto(x.rs))}</small></div></li>`; }).join("") || '<li class="vazio">Nenhum cliente comprou nesse dia.</li>';
+  $("diaMais").hidden = L.length <= verDia; $("diaMais").textContent = `Ver todos (${L.length})`;
+}
 $("aMais").addEventListener("click", () => { verA = 9999; render(); });
 $("dMais").addEventListener("click", () => { verD = 9999; render(); });
 $("pMais").addEventListener("click", () => { verP = 9999; render(); });
