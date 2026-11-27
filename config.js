@@ -4,5 +4,7 @@
    NUNCA coloque aqui a chave "secret" ou "service_role". */
 window.PAINEL_CONFIG = {
   url: "https://oiienookoancrqznfoyp.supabase.co",
-  key: "sb_publishable_VdbyfSeePwf0k5Itvox_kA_w5-EGQac"
+  key: "sb_publishable_VdbyfSeePwf0k5Itvox_kA_w5-EGQac",
+  // true = o link mostra só dados fictícios (sem login). Troque para false para liberar os dados reais.
+  somenteDemo: true
 };
