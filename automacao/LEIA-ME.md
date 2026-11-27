@@ -23,7 +23,9 @@ Faz exatamente o que "Importar planilhas" faz no painel: troca as vendas do per�
 
 ## Planner
 
-O Planner não salva uma planilha sozinho. Alguém precisa, no Planner, abrir o plano **Gestão de Contratos** > **...** > **Exportar plano para o Excel** e salvar o arquivo sempre com o mesmo nome, na pasta sincronizada (substituindo o anterior). O robô percebe a troca e importa.
+Há dois jeitos:
+- **Automático (recomendado):** um fluxo gratuito do Power Automate grava o arquivo `planner_contratos.json` todo dia na pasta do SharePoint. O passo a passo está em **FLUXO-PLANNER.md**. No `config_robo.json`, preencha `planner_json` com o caminho desse arquivo.
+- **Manual:** no Planner, abra o plano **Gestão de Contratos** > **...** > **Exportar plano para o Excel** e salve o arquivo sempre com o mesmo nome, na pasta sincronizada, substituindo o anterior. Preencha `planner` com esse caminho.
 
 ## No dia a dia
 

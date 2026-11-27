@@ -14,6 +14,7 @@ Só importa quando o arquivo mudou desde a última importação. Uso:
   python importar_venda_diaria.py            importa se o arquivo mudou
   python importar_venda_diaria.py --forcar   importa mesmo sem mudança
   python importar_venda_diaria.py --teste    só lê a planilha e mostra o resumo (não grava nada)
+  python importar_venda_diaria.py --calibrar refaz o mapa dos rótulos do Planner usando a exportação em Excel
 """
 import datetime as dt
 import hashlib
@@ -223,6 +224,116 @@ def ler_planner(caminho):
     raise SystemExit("Não achei as tarefas do Planner (coluna Nome da tarefa) em " + caminho)
 
 
+# ---------- Planner via Power Automate (arquivo JSON gravado pelo fluxo) ----------
+def _cats(v):
+    """appliedCategories pode vir como {"category1": true}, ["category1"] ou "category1,category3"."""
+    if isinstance(v, dict):
+        return sorted(k for k, x in v.items() if x)
+    if isinstance(v, list):
+        return sorted(str(x) for x in v if x)
+    return sorted(x.strip() for x in str(v or "").split(",") if x.strip())
+
+
+def _data_br(v):
+    """Data/hora UTC do Planner -> data no horário de Brasília (UTC-3)."""
+    t = str(v or "").strip()
+    if not t or t.startswith("0001"):
+        return None
+    try:
+        d = dt.datetime.fromisoformat(t.replace("Z", "+00:00"))
+    except ValueError:
+        return iso_de(t) or None
+    if d.tzinfo:
+        d = d.astimezone(dt.timezone(dt.timedelta(hours=-3)))
+    return d.date().isoformat()
+
+
+def ler_json_planner(caminho):
+    with open(caminho, encoding="utf-8-sig") as f:
+        d = json.load(f)
+    if isinstance(d, str):
+        d = json.loads(d)
+    bks = d.get("buckets") or []
+    if isinstance(bks, dict):
+        bks = bks.get("value") or []
+    buckets = {b.get("id"): b.get("name") or "" for b in bks}
+    tarefas = d.get("tarefas") or d.get("value") or []
+    return buckets, tarefas
+
+
+def calibrar_rotulos(tarefas, export_xlsx):
+    """Descobre qual categoria (category1, category2...) é cada rótulo comparando com uma exportação do Planner."""
+    import openpyxl
+    wb = openpyxl.load_workbook(export_xlsx, read_only=True, data_only=True)
+    rot_por_id = {}
+    for n in wb.sheetnames:
+        linhas = [list(r) for r in wb[n].iter_rows(values_only=True)]
+        h = achar_cab(linhas, lambda c: "NOME DA TAREFA" in c)
+        if h < 0:
+            continue
+        cab = [sem_ac(c) for c in linhas[h]]
+        i_id, i_rot = col(cab, "IDENTIFICACAO DA TAREFA"), col(cab, "ROTULOS")
+        for l in linhas[h + 1:]:
+            if l and 0 <= i_id < len(l) and l[i_id]:
+                rot_por_id[str(l[i_id])] = {x.strip() for x in str(l[i_rot] or "").split(";") if x.strip()}
+        break
+    juntos, total = {}, {}
+    for t in tarefas:
+        rots = rot_por_id.get(str(t.get("id")))
+        if rots is None:
+            continue
+        for c in _cats(t.get("categorias", t.get("appliedCategories"))):
+            total[c] = total.get(c, 0) + 1
+            for r in rots:
+                juntos[(c, r)] = juntos.get((c, r), 0) + 1
+    por_rot = {}
+    for (c, r), k in juntos.items():
+        por_rot[r] = por_rot.get(r, 0)
+    for t in tarefas:
+        rots = rot_por_id.get(str(t.get("id")))
+        for r in rots or ():
+            por_rot[r] = por_rot.get(r, 0) + 1
+    mapa = {}
+    for c, n in total.items():
+        cand = [r for (cc, r), k in juntos.items() if cc == c and k == n and por_rot.get(r) == n]
+        if len(cand) == 1:
+            mapa[c] = cand[0]
+    return mapa
+
+
+def contratos_do_json(buckets, tarefas, rotulos):
+    hoje = dt.date.today().isoformat()
+    out = []
+    for i, t in enumerate(tarefas):
+        nome = str(t.get("titulo") or t.get("title") or "").strip()
+        if not nome:
+            continue
+        rot = [sem_ac(rotulos.get(c, "")) for c in _cats(t.get("categorias", t.get("appliedCategories")))]
+        preco, kg = 0, 0
+        for x in re.findall(r"\d{1,3}(?:\.\d{3})+|\d+(?:,\d+)?", str(t.get("notas") or t.get("description") or "")):
+            if "," in x:
+                v = float(x.replace(",", "."))
+                if not preco and 2 < v < 20:
+                    preco = v
+            else:
+                v = int(x.replace(".", ""))
+                if not kg and 100 <= v <= 50000:
+                    kg = v
+        pc = int(num(t.get("percentComplete")))
+        prazo, concl = _data_br(t.get("dueDateTime")), _data_br(t.get("completedDateTime"))
+        m = re.match(r"^(\d{6})\b", nome)
+        out.append({
+            "id": str(t.get("id") or "%s|%d" % (nome, i)), "nome": re.sub(r"^\d{6}\s*-?\s*", "", nome),
+            "etapa": buckets.get(t.get("bucketId"), ""), "status": "Concluída" if pc >= 100 else ("Em andamento" if pc > 0 else "Não iniciado"),
+            "tipo": "Troca de ponto" if any("TROCA DE PONTO" in x for x in rot) else ("Novo" if "NOVO" in rot else ""),
+            "consultor": next((x for x in rot if x in CONS), None),
+            "criado": _data_br(t.get("createdDateTime")), "inicio": _data_br(t.get("startDateTime")), "prazo": prazo,
+            "concluido": concl if pc >= 100 else None,
+            "preco": preco or None, "kg": kg or None, "cliente": m.group(1) if m else None,
+            "atrasado": bool(prazo and prazo < hoje and pc < 100)})
+    return out
+
+
 # ---------- Supabase (REST, com o login do usuário robô) ----------
 class Supa:
     def __init__(self, url, chave):
@@ -340,8 +451,9 @@ def main():
         estado = {}
     if "hash" in estado:  # formato antigo
         estado["vendas"] = {"hash": estado.pop("hash")}
-    teste, forcar = "--teste" in args, "--forcar" in args
-    tarefas = [("vendas", caminho(cfg, "arquivo")), ("planner", caminho(cfg, "planner"))]
+    teste, forcar = "--teste" in args, ("--forcar" in args or "--calibrar" in args)
+    pj = caminho(cfg, "planner_json")
+    tarefas = [("vendas", caminho(cfg, "arquivo")), ("planner", pj or caminho(cfg, "planner"))]
     sb = None
     for tipo, arq in tarefas:
         if not arq:
@@ -352,6 +464,22 @@ def main():
         if tipo == "vendas":
             pac = ler_planilha(arq)
             resumo = "Venda diária: %d notas de %s a %s (%d clientes)" % (len(pac["vendas"]), pac["de"], pac["ate"], len(pac["clientes"]))
+        elif pj:
+            buckets, lista = ler_json_planner(arq)
+            rotulos = dict(cfg.get("planner_rotulos") or estado.get("rotulos") or {})
+            exp = caminho(cfg, "planner")
+            if exp and (not rotulos or "--calibrar" in args):
+                novos = calibrar_rotulos(lista, exp)
+                if novos:
+                    rotulos.update(novos)
+                    estado["rotulos"] = rotulos
+                    log("Rótulos do Planner: " + ", ".join("%s=%s" % kv for kv in sorted(rotulos.items())))
+            if not rotulos:
+                raise SystemExit("Não sei quais são os rótulos do Planner. Preencha \"planner\" com uma exportação do Planner em Excel (só uma vez) para o robô aprender.")
+            ctr = contratos_do_json(buckets, lista, rotulos)
+            resumo = "Planner (fluxo): %d contratos, %d com consultor" % (len(ctr), sum(1 for x in ctr if x["consultor"]))
+            if ctr and not any(x["consultor"] for x in ctr):
+                log("AVISO: nenhum contrato ficou com consultor. Rode o rodar_agora.bat com a exportação em Excel em \"planner\" para o robô reaprender os rótulos (--calibrar).")
         else:
             ctr = ler_planner(arq)
             resumo = "Planner: %d contratos" % len(ctr)
