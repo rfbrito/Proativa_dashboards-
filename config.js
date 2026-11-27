@@ -3,6 +3,6 @@
    Essa chave é pública por desenho; quem protege os dados são as regras do banco.
    NUNCA coloque aqui a chave "secret" ou "service_role". */
 window.PAINEL_CONFIG = {
-  url: "",   // ex.: "https://abcdefgh.supabase.co"
-  key: ""    // ex.: "sb_publishable_..." ou "eyJ..."
+  url: "https://oiienookoancrqznfoyp.supabase.co",
+  key: "sb_publishable_VdbyfSeePwf0k5Itvox_kA_w5-EGQac"
 };
