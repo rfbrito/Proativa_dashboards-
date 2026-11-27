@@ -1,8 +1,8 @@
-# Robô da venda diária
+# Robô da venda diária e do Planner
 
-Leva a planilha **VENDA_POR_VENDEDOR_DIARIO.xlsx** do SharePoint para o Supabase do Painel do Consultor, sem ninguém precisar importar no painel.
+Leva a planilha **VENDA_POR_VENDEDOR_DIARIO.xlsx** (e, se você quiser, a exportação do Planner **Gestão de Contratos**) do SharePoint para o Supabase do Painel do Consultor, sem ninguém precisar importar no painel.
 Ele roda num computador da empresa, de hora em hora, e só importa quando a planilha mudou.
-Faz exatamente o que "Importar planilhas" faz no painel: troca as vendas do período do arquivo, cria clientes novos e preenche nomes que faltam.
+Faz exatamente o que "Importar planilhas" faz no painel: troca as vendas do período do arquivo, cria clientes novos e preenche nomes que faltam. No Planner, troca todos os contratos pelos da planilha.
 
 ## Antes de começar
 
@@ -16,9 +16,14 @@ Faz exatamente o que "Importar planilhas" faz no painel: troca as vendas do per�
 2. Dê dois cliques em **instalar.bat**.
 3. O Bloco de Notas abre o `config_robo.json`. Preencha:
    - `email` e `senha`: do usuário robô.
-   - `arquivo`: o caminho da planilha. Para pegar, segure **Shift**, clique com o botão direito na planilha e escolha **Copiar como caminho**. Cole e troque cada `\` por `/` e tire as aspas extras.
+   - `arquivo`: o caminho da planilha de venda diária. Para pegar, segure **Shift**, clique com o botão direito na planilha e escolha **Copiar como caminho**. Cole e troque cada `\` por `/` e tire as aspas extras.
+   - `planner` (opcional): o caminho da planilha exportada do Planner, do mesmo jeito. Se não for usar, deixe `"planner": ""`.
 4. Salve e feche. O instalador testa a leitura da planilha e cria a tarefa agendada **GLP - Venda diaria**.
 5. Para importar na hora, dê dois cliques em **rodar_agora.bat**.
+
+## Planner
+
+O Planner não salva uma planilha sozinho. Alguém precisa, no Planner, abrir o plano **Gestão de Contratos** > **...** > **Exportar plano para o Excel** e salvar o arquivo sempre com o mesmo nome, na pasta sincronizada (substituindo o anterior). O robô percebe a troca e importa.
 
 ## No dia a dia
 

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Importa a planilha de venda diária (VENDA_POR_VENDEDOR_DIARIO.xlsx) para o Supabase do Painel do Consultor.
+Importa a planilha de venda diária (VENDA_POR_VENDEDOR_DIARIO.xlsx) e, se configurado, a exportação do
+Planner "Gestão de Contratos" para o Supabase do Painel do Consultor.
 
 Faz o mesmo que "Importar planilhas" no painel:
   - lê a aba BASE (uma linha por item de nota) e a aba Dados (código do vendedor -> consultor);
   - apaga as vendas já gravadas no período do arquivo e grava de novo (não duplica);
-  - cria os clientes novos que aparecem na venda e preenche o nome de quem está sem nome.
+  - cria os clientes novos que aparecem na venda e preenche o nome de quem está sem nome;
+  - Planner: troca todos os contratos pelos da planilha exportada (etapa, consultor, prazos, preço e kg).
 
 Entra com um usuário do painel (papel gestor), nunca com a chave secreta do Supabase.
 Só importa quando o arquivo mudou desde a última importação. Uso:
@@ -174,6 +176,53 @@ def ler_planilha(caminho):
     raise SystemExit("Não achei a aba de vendas (colunas Cliente, Emissão e Quantidade) em " + caminho)
 
 
+def ler_planner(caminho):
+    import openpyxl
+    wb = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
+    abas = [n for n in wb.sheetnames if "CONSOLIDAD" in sem_ac(n)] or wb.sheetnames
+    for n in abas:
+        linhas = [list(r) for r in wb[n].iter_rows(values_only=True)]
+        h = achar_cab(linhas, lambda c: "NOME DA TAREFA" in c)
+        if h < 0:
+            continue
+        cab = [sem_ac(c) for c in linhas[h]]
+        i_con = max([i for i, c in enumerate(cab) if c.startswith("DATA DE CONCLUSAO")], default=-1)
+        c = {"id": col(cab, "IDENTIFICACAO DA TAREFA"), "nome": col(cab, "NOME DA TAREFA"), "et": col(cab, "NOME DO BUCKET", "CATEGORIA"),
+             "st": col(cab, "STATUS"), "cri": col(cab, "CRIADO EM"), "ini": col(cab, "DATA DE INICIO"), "ter": col(cab, "DATA DE TERMINO"),
+             "atr": col(cab, "ATRASADOS"), "rot": col(cab, "ROTULOS"), "not": col(cab, "NOTAS")}
+        pega = lambda l, k: l[c[k]] if 0 <= c[k] < len(l) else None
+        out = []
+        for i, l in enumerate(linhas[h + 1:], start=h + 1):
+            l = l or []
+            nome = str(pega(l, "nome") or "").strip()
+            if not nome:
+                continue
+            rot = [sem_ac(x) for x in str(pega(l, "rot") or "").split(";")]
+            preco, kg = 0, 0
+            for t in re.findall(r"\d{1,3}(?:\.\d{3})+|\d+(?:,\d+)?", str(pega(l, "not") or "")):
+                if "," in t:
+                    v = float(t.replace(",", "."))
+                    if not preco and 2 < v < 20:
+                        preco = v
+                else:
+                    v = int(t.replace(".", ""))
+                    if not kg and 100 <= v <= 50000:
+                        kg = v
+            m = re.match(r"^(\d{6})\b", nome)
+            out.append({
+                "id": str(pega(l, "id") or "%s|%d" % (nome, i)), "nome": re.sub(r"^\d{6}\s*-?\s*", "", nome),
+                "etapa": str(pega(l, "et") or "").strip(), "status": str(pega(l, "st") or "").strip(),
+                "tipo": "Troca de ponto" if any("TROCA DE PONTO" in x for x in rot) else ("Novo" if "NOVO" in rot else ""),
+                "consultor": next((x for x in rot if x in CONS), None),
+                "criado": iso_de(pega(l, "cri")) or None, "inicio": iso_de(pega(l, "ini")) or None, "prazo": iso_de(pega(l, "ter")) or None,
+                "concluido": (iso_de(l[i_con]) if 0 <= i_con < len(l) else "") or None,
+                "preco": preco or None, "kg": kg or None, "cliente": m.group(1) if m else None,
+                "atrasado": str(pega(l, "atr")).lower() == "true"})
+        if out:
+            return out
+    raise SystemExit("Não achei as tarefas do Planner (coluna Nome da tarefa) em " + caminho)
+
+
 # ---------- Supabase (REST, com o login do usuário robô) ----------
 class Supa:
     def __init__(self, url, chave):
@@ -231,9 +280,18 @@ class Supa:
         self._req("DELETE", caminho, cab={"Prefer": "return=minimal"})
 
 
-def publicar(cfg, pac):
+def conectar(cfg):
     sb = Supa(cfg["supabase_url"], cfg["supabase_chave"])
     sb.entrar(cfg["email"], cfg["senha"])
+    return sb
+
+
+def publicar_planner(sb, contratos):
+    sb.apagar("/rest/v1/contratos?id=neq.")
+    sb.inserir("contratos", contratos, lote=500)
+
+
+def publicar(sb, pac):
     _, h = sb._req("GET", "/rest/v1/clientes?select=codigo", cab={"Prefer": "count=exact", "Range": "0-0"})
     vazio = (h.get("Content-Range") or "*/0").split("/")[-1] == "0"
     sem_nome = set() if vazio else {r["codigo"] for r in sb.todos("/rest/v1/clientes?select=codigo&nome=is.null&order=codigo")}
@@ -256,33 +314,61 @@ def hash_arquivo(caminho):
     return s.hexdigest()
 
 
+def caminho(cfg, chave):
+    v = (cfg.get(chave) or "").strip()
+    if not v:
+        return ""
+    arq = os.path.expandvars(os.path.expanduser(v))
+    if not os.path.exists(arq):
+        raise SystemExit("Não achei o arquivo de '%s' em: %s" % (chave, arq))
+    return arq
+
+
 def main():
     args = set(sys.argv[1:])
     if not os.path.exists(CONFIG):
         raise SystemExit("Falta o arquivo config_robo.json. Copie o config_robo.exemplo.json e preencha.")
-    with open(CONFIG, encoding="utf-8") as f:
-        cfg = json.load(f)
-    arq = os.path.expandvars(os.path.expanduser(cfg["arquivo"]))
-    if not os.path.exists(arq):
-        raise SystemExit("Não achei a planilha em: " + arq)
+    try:
+        with open(CONFIG, encoding="utf-8-sig") as f:
+            cfg = json.load(f)
+    except ValueError as e:
+        raise SystemExit("O config_robo.json tem um erro de digitação (%s). Use / nos caminhos, nunca \\." % e)
     try:
         with open(ESTADO, encoding="utf-8") as f:
             estado = json.load(f)
     except (OSError, ValueError):
         estado = {}
-    hsh = hash_arquivo(arq)
-    if "--teste" not in args and "--forcar" not in args and estado.get("hash") == hsh:
-        return  # nada mudou desde a última importação
-    pac = ler_planilha(arq)
-    resumo = "%d notas de %s a %s (%d clientes)" % (len(pac["vendas"]), pac["de"], pac["ate"], len(pac["clientes"]))
-    if "--teste" in args:
-        log("TESTE (nada gravado): " + resumo)
-        return
-    nomes = publicar(cfg, pac)
-    estado = {"hash": hsh, "importado_em": dt.datetime.now().isoformat(timespec="seconds"), "resumo": resumo}
-    with open(ESTADO, "w", encoding="utf-8") as f:
-        json.dump(estado, f, ensure_ascii=False, indent=1)
-    log("OK: " + resumo + (", %d nomes preenchidos" % nomes if nomes else ""))
+    if "hash" in estado:  # formato antigo
+        estado["vendas"] = {"hash": estado.pop("hash")}
+    teste, forcar = "--teste" in args, "--forcar" in args
+    tarefas = [("vendas", caminho(cfg, "arquivo")), ("planner", caminho(cfg, "planner"))]
+    sb = None
+    for tipo, arq in tarefas:
+        if not arq:
+            continue
+        hsh = hash_arquivo(arq)
+        if not teste and not forcar and (estado.get(tipo) or {}).get("hash") == hsh:
+            continue  # nada mudou desde a última importação
+        if tipo == "vendas":
+            pac = ler_planilha(arq)
+            resumo = "Venda diária: %d notas de %s a %s (%d clientes)" % (len(pac["vendas"]), pac["de"], pac["ate"], len(pac["clientes"]))
+        else:
+            ctr = ler_planner(arq)
+            resumo = "Planner: %d contratos" % len(ctr)
+        if teste:
+            log("TESTE (nada gravado): " + resumo)
+            continue
+        sb = sb or conectar(cfg)
+        extra = ""
+        if tipo == "vendas":
+            nomes = publicar(sb, pac)
+            extra = ", %d nomes preenchidos" % nomes if nomes else ""
+        else:
+            publicar_planner(sb, ctr)
+        estado[tipo] = {"hash": hsh, "importado_em": dt.datetime.now().isoformat(timespec="seconds"), "resumo": resumo}
+        with open(ESTADO, "w", encoding="utf-8") as f:
+            json.dump(estado, f, ensure_ascii=False, indent=1)
+        log("OK: " + resumo + extra)
 
 
 if __name__ == "__main__":
