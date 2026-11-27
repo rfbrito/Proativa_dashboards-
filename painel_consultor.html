@@ -121,6 +121,21 @@ svg text{font:12px Inter,sans-serif;fill:var(--mute);paint-order:stroke;stroke:v
 .list .r small{display:block;font-weight:400;color:var(--mute);font-size:12px}
 .tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--mist);color:var(--blue);margin-right:6px}
 .tag.w{background:var(--warnBg);color:var(--warn)}
+.ct li{grid-template-columns:minmax(0,1fr) auto auto}
+.chk{width:48px;height:48px;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;padding:0;margin:-10px -10px 0 0;-webkit-tap-highlight-color:transparent}
+.chk .box{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);display:grid;place-items:center;color:#fff}
+.chk[aria-pressed=true] .box{background:var(--blue);border-color:var(--blue)}
+.chk:focus-visible .box{outline:2px solid var(--blue);outline-offset:2px}
+.ct li.done strong{opacity:.6}
+.cnota{grid-column:1/-1;font-size:13px;color:var(--ink);background:var(--mist);border-radius:10px;padding:8px 10px;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+.cnota b{font-weight:600;color:var(--mute)}
+.cform{grid-column:1/-1;display:grid;gap:8px;margin-top:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.cform label{font-size:13px;color:var(--mute);display:grid;gap:4px}
+.cform input,.cform textarea{font:16px var(--body-font,Inter),sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%;box-sizing:border-box}
+.cform textarea{min-height:84px;resize:vertical}
+.cform .acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cform .acoes .btn{min-height:44px;padding:0 18px;width:auto}
+.cform .msg{font-size:13px;color:var(--warn)}
 .mais{margin-top:6px;background:none;border:1px solid var(--line);border-radius:12px;min-height:44px;width:100%;font-weight:600;color:var(--blue);cursor:pointer}
 .vazio{color:var(--mute);font-size:14px;padding:8px 0}
 .sub{font:600 15px Inter,sans-serif;margin:20px 0 10px}
@@ -223,6 +238,7 @@ svg text {font-family:var(--body-font);}
 .fr.r3 .bar i,.fr.r4 .bar i,.fr.r5 .bar i,.fr.late .bar i {background:var(--warn);}
 .tag {background:var(--mist);color:var(--blue);}
 .tag.w {background:var(--warnBg);color:var(--warn);}
+.chk[aria-pressed=true] .box {background:var(--brand-green);border-color:var(--brand-green);color:var(--brand-navy);}
 .rank .p,.rank .av {font-family:var(--body-font);}
 .rank .me .av {background:var(--brand-green);color:var(--brand-navy);}
 .rank .me .bar i {background:var(--brand-green);}
@@ -426,7 +442,7 @@ nav.tabs a.on {box-shadow:none;background:var(--green-soft);}
     <div class="panel">
       <h2>Sem consumo no mês</h2>
       <p class="find" id="aFind"></p>
-      <ul class="list" id="aList"></ul>
+      <ul class="list ct" id="aList"></ul>
       <button class="mais" id="aMais" type="button" hidden></button>
     </div>
   </section>
@@ -559,6 +575,7 @@ async function carregar() {
       todas(() => sb.from("vendas_dia").select("emissao,consultor,kg,valor,nfs").order("emissao").order("consultor")),
       todas(() => sb.from("contratos").select("*").order("id"))
     ]);
+    await carregarContatos();
     BASE = montarBase(cli, vm, vd, ct, { nome: perfil.nome || perfil.email, role: perfil.papel === "consultor" ? "atendente" : perfil.papel });
     try { localStorage.setItem("painel-cache", JSON.stringify(BASE)); } catch (e) {}
     iniciar(cli.length || vd.length ? "" : (perfil.papel === "consultor" ? "Ainda não há dados da sua carteira. Fale com o gestor." : "O banco está vazio. Toque no seu nome > Importar planilhas e envie a venda diária, o arquivo de carteiras e o planner."));
@@ -994,6 +1011,16 @@ function calcular() {
 let C = null;
 const fmtU = v => unidade === "kg" ? nBR(v) + " kg" : brl(v);
 const fmtC = v => unidade === "kg" ? curto(v) + " kg" : "R$ " + curto(v);
+/* contatos do alerta: gravados no banco (tabela contatos); o gestor vê os de todos, o consultor só os dele */
+let CONTATOS = [], contatosOk = true, abertoC = "";
+const hojeLocal = () => new Date().toLocaleDateString("sv");
+const contatoDoMes = cod => CONTATOS.filter(c => c.cliente === cod && String(c.data).startsWith(C.ym)).sort((a, b) => (a.data + a.id < b.data + b.id ? 1 : -1))[0];
+async function carregarContatos() {
+  if (demo || !sb) return;
+  const desde = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
+  try { CONTATOS = await todas(() => sb.from("contatos").select("id,cliente,consultor,data,nota").gte("data", desde).order("id")); contatosOk = true; }
+  catch (e) { CONTATOS = []; contatosOk = false; }
+}
 let verDia = 8, verN = 6, verA = 8, verT = 6, verC = 6, verP = 8, verD = 6;
 
 function ajustarData() {
@@ -1090,9 +1117,14 @@ function render() {
   const A = C.semMes, mAnt = MESES[+ymAnt(C.ym).slice(5) - 1], mAt = MESES[+C.ym.slice(5) - 1];
   const kgAnt = A.reduce((t, x) => t + x.antKg, 0), atr = A.filter(x => x.atras).length;
   $("aFind").innerHTML = A.length ? `<strong>${A.length}</strong> ${A.length === 1 ? "cliente comprou" : "clientes compraram"} em ${mAnt} e ainda não em ${mAt} (${esc(curto(kgAnt))} kg em ${mAnt}). <strong>${atr}</strong> já ${atr === 1 ? "passou" : "passaram"} do intervalo normal de compra.` : `Todos os clientes de ${mAnt} já compraram em ${mAt}.`;
+  const tick = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
   $("aList").innerHTML = A.slice(0, verA).map(({ r, u, dd, it, antKg, atras }) => {
-    return `<li><div><strong>${esc(nomeCli(r))}</strong><span class="s"><span class="tag${atras ? " w" : ""}">${dd < 999 ? dd + " dias" : "sem data"}</span>cód. ${esc(r[0])} · compra a cada ${it} dias${u ? " · última " + esc(dBR(u)) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${esc(curto(antKg))} kg<small>em ${esc(mAnt)}</small></div></li>`;
+    const ct = contatoDoMes(r[0]), f = !!ct, ab = abertoC === r[0];
+    const nota = ct ? `<div class="cnota"><b>Contato em ${esc(dBR(ct.data))}:</b> ${esc(ct.nota || "sem observação")}</div>` : "";
+    const form = ab ? `<div class="cform" data-c="${esc(r[0])}"><label>Data do contato<input type="date" class="c-data" value="${esc(ct ? ct.data : hojeLocal())}" max="${esc(hojeLocal())}"></label><label>O que foi conversado<textarea class="c-nota" maxlength="1000" placeholder="Ex.: cliente vai pedir na semana que vem">${esc(ct ? ct.nota || "" : "")}</textarea></label><div class="acoes"><button class="btn c-salvar" type="button">Salvar</button><button class="btn sec c-cancelar" type="button">Cancelar</button>${ct ? '<button class="lnk c-apagar" type="button">Apagar contato</button>' : ""}<span class="msg"></span></div></div>` : "";
+    return `<li class="${f ? "done" : ""}"><div><strong>${esc(nomeCli(r))}</strong><span class="s"><span class="tag${atras ? " w" : ""}">${dd < 999 ? dd + " dias" : "sem data"}</span>cód. ${esc(r[0])} · compra a cada ${it} dias${u ? " · última " + esc(dBR(u)) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${esc(curto(antKg))} kg<small>em ${esc(mAnt)}</small></div><button class="chk" type="button" data-c="${esc(r[0])}" aria-pressed="${f}" aria-label="Registrar contato com ${esc(nomeCli(r))}"><span class="box">${f ? tick : ""}</span></button>${nota}${form}</li>`;
   }).join("");
+  if (!contatosOk) $("aFind").innerHTML += ' <span class="tag w">Os contatos ainda não podem ser salvos: rode o 02_contatos.sql no Supabase.</span>';
   $("aMais").hidden = A.length <= verA; $("aMais").textContent = `Ver todos (${A.length})`;
 
 
@@ -1163,6 +1195,31 @@ $("aMais").addEventListener("click", () => { verA = 9999; render(); });
 $("dMais").addEventListener("click", () => { verD = 9999; render(); });
 $("pMais").addEventListener("click", () => { verP = 9999; render(); });
 $("ctrMais").addEventListener("click", () => { verC = 9999; render(); });
+$("aList").addEventListener("click", async e => {
+  const b = e.target.closest(".chk");
+  if (b) { abertoC = abertoC === b.dataset.c ? "" : b.dataset.c; render(); const t = document.querySelector(".cform .c-nota"); if (t) t.focus(); return; }
+  const fm = e.target.closest(".cform"); if (!fm) return;
+  const cod = fm.dataset.c, msg = fm.querySelector(".msg"), atual = contatoDoMes(cod);
+  if (e.target.closest(".c-cancelar")) { abertoC = ""; return render(); }
+  const salvarLocal = (novo) => { CONTATOS = CONTATOS.filter(c => !atual || c.id !== atual.id); if (novo) CONTATOS.push(novo); abertoC = ""; render(); };
+  try {
+    if (e.target.closest(".c-apagar")) {
+      if (!demo && sb) { const r = await sb.from("contatos").delete().eq("id", atual.id); if (r.error) throw r.error; }
+      return salvarLocal(null);
+    }
+    if (!e.target.closest(".c-salvar")) return;
+    const data = fm.querySelector(".c-data").value, nota = fm.querySelector(".c-nota").value.trim();
+    if (!data) { msg.textContent = "Escolha a data do contato."; return; }
+    const cli = BASE.cad.find(r => r[0] === cod), cons = (BASE.perfil.role === "atendente" ? (perfil && perfil.consultor) : cli && cli[8]) || null;
+    const linha = { cliente: cod, consultor: cons ? String(cons).toUpperCase() : null, data, nota: nota || null };
+    if (demo || !sb) return salvarLocal(Object.assign({ id: Date.now() }, linha));
+    e.target.disabled = true; msg.textContent = "Salvando…";
+    const r = atual ? await sb.from("contatos").update({ data, nota: linha.nota }).eq("id", atual.id).select("id,cliente,consultor,data,nota").single()
+                    : await sb.from("contatos").insert(linha).select("id,cliente,consultor,data,nota").single();
+    if (r.error) throw r.error;
+    salvarLocal(r.data);
+  } catch (err) { msg.textContent = traduz(err); e.target.disabled = false; }
+});
 
 const svg = $("chart"), fig = $("fig");
 function desenhar() {
