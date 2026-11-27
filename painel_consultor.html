@@ -121,12 +121,6 @@ svg text{font:12px Inter,sans-serif;fill:var(--mute);paint-order:stroke;stroke:v
 .list .r small{display:block;font-weight:400;color:var(--mute);font-size:12px}
 .tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--mist);color:var(--blue);margin-right:6px}
 .tag.w{background:var(--warnBg);color:var(--warn)}
-.ct li{grid-template-columns:minmax(0,1fr) auto auto}
-.chk{width:48px;height:48px;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;padding:0;margin:-10px -10px 0 0;-webkit-tap-highlight-color:transparent}
-.chk .box{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);display:grid;place-items:center;color:#fff}
-.chk[aria-pressed=true] .box{background:var(--blue);border-color:var(--blue)}
-.chk:focus-visible .box{outline:2px solid var(--blue);outline-offset:2px}
-.ct li.done strong,.ct li.done .s{opacity:.45;text-decoration:line-through}
 .mais{margin-top:6px;background:none;border:1px solid var(--line);border-radius:12px;min-height:44px;width:100%;font-weight:600;color:var(--blue);cursor:pointer}
 .vazio{color:var(--mute);font-size:14px;padding:8px 0}
 .sub{font:600 15px Inter,sans-serif;margin:20px 0 10px}
@@ -229,7 +223,6 @@ svg text {font-family:var(--body-font);}
 .fr.r3 .bar i,.fr.r4 .bar i,.fr.r5 .bar i,.fr.late .bar i {background:var(--warn);}
 .tag {background:var(--mist);color:var(--blue);}
 .tag.w {background:var(--warnBg);color:var(--warn);}
-.chk[aria-pressed=true] .box {background:var(--brand-green);border-color:var(--brand-green);color:var(--brand-navy);}
 .rank .p,.rank .av {font-family:var(--body-font);}
 .rank .me .av {background:var(--brand-green);color:var(--brand-navy);}
 .rank .me .bar i {background:var(--brand-green);}
@@ -433,7 +426,7 @@ nav.tabs a.on {box-shadow:none;background:var(--green-soft);}
     <div class="panel">
       <h2>Sem consumo no mês</h2>
       <p class="find" id="aFind"></p>
-      <ul class="list ct" id="aList"></ul>
+      <ul class="list" id="aList"></ul>
       <button class="mais" id="aMais" type="button" hidden></button>
     </div>
   </section>
@@ -1001,8 +994,6 @@ function calcular() {
 let C = null;
 const fmtU = v => unidade === "kg" ? nBR(v) + " kg" : brl(v);
 const fmtC = v => unidade === "kg" ? curto(v) + " kg" : "R$ " + curto(v);
-let feitos = {};
-try { feitos = JSON.parse(localStorage.getItem("painel-contatos") || "{}"); } catch (e) {}
 let verDia = 8, verN = 6, verA = 8, verT = 6, verC = 6, verP = 8, verD = 6;
 
 function ajustarData() {
@@ -1099,10 +1090,8 @@ function render() {
   const A = C.semMes, mAnt = MESES[+ymAnt(C.ym).slice(5) - 1], mAt = MESES[+C.ym.slice(5) - 1];
   const kgAnt = A.reduce((t, x) => t + x.antKg, 0), atr = A.filter(x => x.atras).length;
   $("aFind").innerHTML = A.length ? `<strong>${A.length}</strong> ${A.length === 1 ? "cliente comprou" : "clientes compraram"} em ${mAnt} e ainda não em ${mAt} (${esc(curto(kgAnt))} kg em ${mAnt}). <strong>${atr}</strong> já ${atr === 1 ? "passou" : "passaram"} do intervalo normal de compra.` : `Todos os clientes de ${mAnt} já compraram em ${mAt}.`;
-  const tick = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
   $("aList").innerHTML = A.slice(0, verA).map(({ r, u, dd, it, antKg, atras }) => {
-    const f = feitos[r[0]] === C.ym;
-    return `<li class="${f ? "done" : ""}"><div><strong>${esc(nomeCli(r))}</strong><span class="s"><span class="tag${atras ? " w" : ""}">${dd < 999 ? dd + " dias" : "sem data"}</span>cód. ${esc(r[0])} · compra a cada ${it} dias${u ? " · última " + esc(dBR(u)) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${esc(curto(antKg))} kg<small>em ${esc(mAnt)}</small></div><button class="chk" type="button" data-c="${esc(r[0])}" aria-pressed="${f}" aria-label="Marcar ${esc(nomeCli(r))} como contatado"><span class="box">${f ? tick : ""}</span></button></li>`;
+    return `<li><div><strong>${esc(nomeCli(r))}</strong><span class="s"><span class="tag${atras ? " w" : ""}">${dd < 999 ? dd + " dias" : "sem data"}</span>cód. ${esc(r[0])} · compra a cada ${it} dias${u ? " · última " + esc(dBR(u)) : ""}${sel === "*" && r[8] ? " · " + esc(cap(r[8])) : ""}</span></div><div class="r">${esc(curto(antKg))} kg<small>em ${esc(mAnt)}</small></div></li>`;
   }).join("");
   $("aMais").hidden = A.length <= verA; $("aMais").textContent = `Ver todos (${A.length})`;
 
@@ -1127,7 +1116,7 @@ function render() {
   $("kList").innerHTML = R.map(([n, v], i) => `<li class="${n === sel ? "me" : ""}"><span class="p">${i + 1}º</span><span class="av">${esc(iniciais(n))}</span><div><div class="n">${esc(cap(n))}</div><div class="bar"><i style="width:${(v / maxR * 100).toFixed(1)}%"></i></div></div><span class="v">${esc(fmtC(v))}</span></li>`).join("") || '<li class="vazio">Sem vendas no mês.</li>';
   $("kFind").textContent = R.length ? `${cap(R[0][0])} lidera ${unidade === "kg" ? "em volume" : "em faturamento"} no mês.` : "";
 
-  $("rodape").textContent = demo ? "Dados fictícios de demonstração." : (BASE.info.ultima ? "Vendas até " + dBR(BASE.info.ultima) + "/" + BASE.info.ultima.slice(0, 4) : "Sem vendas importadas") + ". A marcação de contatos fica salva só neste aparelho.";
+  $("rodape").textContent = demo ? "Dados fictícios de demonstração." : (BASE.info.ultima ? "Vendas até " + dBR(BASE.info.ultima) + "/" + BASE.info.ultima.slice(0, 4) : "Sem vendas importadas") + ".";
 }
 
 $("nMais").addEventListener("click", () => { verN = 9999; render(); });
@@ -1174,12 +1163,6 @@ $("aMais").addEventListener("click", () => { verA = 9999; render(); });
 $("dMais").addEventListener("click", () => { verD = 9999; render(); });
 $("pMais").addEventListener("click", () => { verP = 9999; render(); });
 $("ctrMais").addEventListener("click", () => { verC = 9999; render(); });
-$("aList").addEventListener("click", e => {
-  const b = e.target.closest(".chk"); if (!b) return;
-  const c = b.dataset.c; if (feitos[c] === C.ym) delete feitos[c]; else feitos[c] = C.ym;
-  try { localStorage.setItem("painel-contatos", JSON.stringify(feitos)); } catch (e) {}
-  render();
-});
 
 const svg = $("chart"), fig = $("fig");
 function desenhar() {
