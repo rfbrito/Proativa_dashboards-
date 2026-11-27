@@ -72,8 +72,8 @@ header.top{padding-block:calc(env(safe-area-inset-top,0px) + 16px) 12px;display:
 .menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:14px 16px;min-height:48px;cursor:pointer}
 .menu button+button{border-top:1px solid var(--line)}
 .selc{padding-bottom:12px}
-.filtros{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
-.filtros:has(#sel:not([hidden])){grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+.filtros{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px}
+.filtros #sel{grid-column:1/-1}
 .fdata{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;background:var(--card);min-height:46px;padding:0 12px}
 .fdata span{font-size:13px;color:var(--mute);white-space:nowrap}
 .fdata input{flex:1;min-width:0;border:0;background:transparent;font:600 15px Inter,sans-serif;color:var(--ink);padding:8px 0}
@@ -382,6 +382,7 @@ nav.tabs a.on {box-shadow:none;background:var(--green-soft);}
 </div>
 <div class="wrap selc">
   <div class="filtros">
+    <select id="mRef" aria-label="Período (mês)"></select>
     <label class="fdata"><span>Até</span><input type="date" id="dRef" aria-label="Data de referência"></label>
     <select id="sel" aria-label="Consultor" hidden></select>
   </div>
@@ -923,6 +924,14 @@ function iniciar(aviso) {
   render();
 }
 $("sel").addEventListener("change", e => { sel = e.target.value; render(); });
+$("mRef").addEventListener("change", e => {
+  const ym = e.target.value, ult = BASE.info.ultima || "";
+  if (!ym) return;
+  const fim = ym + "-" + String(new Date(+ym.slice(0, 4), +ym.slice(5), 0).getDate()).padStart(2, "0");
+  const dd = BASE.dia.reduce((a, r) => { const d = String(r[0]); return d.startsWith(ym) && d > a ? d : a; }, "");
+  dataRef = dd || (ult && fim > ult ? ult : fim);
+  render();
+});
 $("dRef").addEventListener("change", e => { const v = e.target.value; if (v) { dataRef = v; render(); } });
 document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
   unidade = b.dataset.u;
@@ -1074,6 +1083,10 @@ function ajustarData() {
   $("dRef").max = ult || ""; $("dRef").min = pri || "";
   if (!dataRef || !ult || dataRef > ult || (pri && dataRef < pri)) dataRef = ult || null;
   $("dRef").value = dataRef || "";
+  const ms = [];
+  if (pri && ult) for (let y = +pri.slice(0, 4), m = +pri.slice(5, 7); y * 12 + m <= +ult.slice(0, 4) * 12 + +ult.slice(5, 7); m++) { if (m > 12) { m = 1; y++; } ms.push(y + "-" + String(m).padStart(2, "0")); }
+  const atual = (dataRef || "").slice(0, 7);
+  $("mRef").innerHTML = ms.reverse().map(ym => `<option value="${ym}"${ym === atual ? " selected" : ""}>${cap(MESES[+ym.slice(5) - 1])} ${ym.slice(0, 4)}</option>`).join("") || '<option value="">Sem dados</option>';
 }
 function render() {
   ajustarData();
