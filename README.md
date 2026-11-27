@@ -20,6 +20,9 @@ Detalhes em `supabase/GUIA_CONFIGURACAO.md` e `supabase/GUIA_ROTA_AUTOMATICA.md`
 `python3 src/build.py` (precisa de `node_modules` com `@supabase/supabase-js` e `xlsx`) e `python3 src/mk_release.py <saida.html>` para injetar URL/chave.
 
 ## Painel do Consultor (celular)
-- `painel_consultor.html` — painel mobile dos consultores, com o mesmo login e o mesmo Supabase. Mostra volume e faturamento do mês contra o previsto, clientes sem consumo no mês, tanques parados há 3 anos, clientes novos e o 1º abastecimento (planner Gestão de Contratos). Cada consultor vê só a própria carteira (RLS).
-- Para os contratos: rode `supabase/10_contratos.sql` uma vez. Depois, o gestor importa o Excel exportado do Planner pelo menu da conta no próprio painel.
-- Hospedagem no GitHub Pages: Settings > Pages > Deploy from a branch > `main` / `(root)`. Endereço: `https://rfbrito.github.io/Proativa_dashboards-/painel_consultor.html`.
+Projeto Supabase **próprio**, separado do Painel de Atendimento.
+- `painel_consultor.html`: painel mobile. Login com criar conta e esqueci a senha, importação das planilhas (venda diária, carteiras .json, planner de contratos, RelFinCliente) e tela de usuários para o admin.
+- `config.js`: URL e chave publishable do projeto Supabase do consultor.
+- `supabase_consultor/01_banco_consultor.sql`: tabelas `perfis`, `clientes`, `vendas`, `contratos` e resumos; o consultor só lê a própria carteira (RLS).
+- Passo a passo: `supabase_consultor/GUIA.md`.
+- Endereço (GitHub Pages, branch `main`, pasta raiz): `https://rfbrito.github.io/Proativa_dashboards-/painel_consultor.html`.
