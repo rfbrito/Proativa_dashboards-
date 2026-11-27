@@ -11,6 +11,7 @@ Tempo: uns 20 minutos. Não precisa programar.
 1. Menu da esquerda: **SQL Editor > New query**.
 2. Cole todo o conteúdo de `supabase_consultor/01_banco_consultor.sql` e clique em **Run**.
 3. Deve aparecer "ok — resumos criados".
+4. Abra outra query, cole `supabase_consultor/02_contatos.sql` e clique em **Run**. Deve aparecer "ok — contatos prontos". Ele guarda os contatos registrados no alerta "Sem consumo no mês".
 
 ## 3. Ligar o painel ao projeto
 1. **Project Settings > API** (ou **Data API**): copie a **Project URL** e a chave **publishable** (ou **anon public**).
